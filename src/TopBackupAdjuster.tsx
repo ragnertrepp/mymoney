@@ -57,33 +57,30 @@ function downloadFullBackup() {
 
 export default function TopBackupAdjuster() {
   useEffect(() => {
-    let button: HTMLButtonElement | null = null;
-
-    const handler = (event: Event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      downloadFullBackup();
-    };
-
     const attach = () => {
-      const candidate = Array.from(document.querySelectorAll<HTMLButtonElement>(".topbar button"))
+      const button = Array.from(document.querySelectorAll<HTMLButtonElement>(".topbar button"))
         .find((item) => item.textContent?.trim() === "Varukoopia" || item.textContent?.trim() === "Täielik varukoopia");
 
-      if (!candidate || candidate === button) return;
-      button?.removeEventListener("click", handler, true);
-      button = candidate;
+      if (!button || button.dataset.mymoneyBackupAttached === "1") return;
+
+      button.dataset.mymoneyBackupAttached = "1";
       button.textContent = "Täielik varukoopia";
       button.title = "Laadi alla põhiandmed, korduvad kirjed, planeeritud maksed ja kategooriaeelarved";
-      button.addEventListener("click", handler, true);
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        downloadFullBackup();
+      }, true);
     };
 
     attach();
-    const observer = new MutationObserver(attach);
-    observer.observe(document.body, { childList: true, subtree: true });
+    const timer = window.setTimeout(attach, 300);
+    const handleNavigation = () => window.requestAnimationFrame(attach);
+    document.querySelector(".navigation")?.addEventListener("click", handleNavigation);
 
     return () => {
-      observer.disconnect();
-      button?.removeEventListener("click", handler, true);
+      window.clearTimeout(timer);
+      document.querySelector(".navigation")?.removeEventListener("click", handleNavigation);
     };
   }, []);
 
