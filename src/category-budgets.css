@@ -1,0 +1,124 @@
+.category-budget-panel {
+  width: min(940px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  padding: 24px;
+  border-radius: 24px;
+  background: var(--surface, #ffffff);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+.category-budget-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin: 20px 0;
+}
+
+.category-budget-controls label,
+.category-budget-actions label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.category-budget-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.category-budget-row {
+  padding: 16px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 18px;
+  background: var(--surface, #ffffff);
+}
+
+.category-budget-row.warning {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.category-budget-row.danger {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.07);
+}
+
+.category-budget-heading,
+.category-budget-actions,
+.category-budget-values {
+  display: flex;
+  align-items: center;
+}
+
+.category-budget-heading {
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.category-budget-heading > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.category-budget-heading span,
+.category-budget-values span,
+.category-budget-actions span {
+  color: var(--muted, #64748b);
+}
+
+.category-budget-values {
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.category-budget-actions {
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.category-budget-actions label {
+  grid-template-columns: auto 110px;
+  align-items: center;
+}
+
+.category-budget-actions input {
+  min-width: 0;
+}
+
+.category-budget-row.warning .category-bar-fill {
+  background: #f59e0b;
+}
+
+.category-budget-row.danger .category-bar-fill {
+  background: #ef4444;
+}
+
+@media (max-width: 720px) {
+  .category-budget-panel {
+    padding: 18px;
+  }
+
+  .category-budget-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .category-budget-heading,
+  .category-budget-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .category-budget-values {
+    justify-content: flex-start;
+  }
+
+  .category-budget-actions label {
+    grid-template-columns: 1fr;
+  }
+}
