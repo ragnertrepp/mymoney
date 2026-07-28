@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { encryptBackupJson, verifyPin } from "./Security";
 
 const STORAGE_KEY = "rebuildme-mymoney-v2";
 const RECURRING_KEY = "rebuildme-mymoney-recurring-v1";
@@ -41,7 +42,14 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function downloadFullBackup() {
+async function downloadFullBackup() {
+  const pin = prompt("Sisesta MyMoney PIN varukoopia krüpteerimiseks:");
+  if (pin === null) return;
+  if (!(await verifyPin(pin))) {
+    alert("Vale PIN-kood. Varukoopiat ei loodud.");
+    return;
+  }
+
   const data = readJson(STORAGE_KEY, null);
   if (!data || typeof data !== "object") {
     alert("MyMoney andmeid ei leitud.");
@@ -50,7 +58,7 @@ function downloadFullBackup() {
 
   const backup = {
     format: "mymoney-full-backup",
-    version: 3,
+    version: 4,
     createdAt: new Date().toISOString(),
     data,
     recurring: readJson(RECURRING_KEY, []),
@@ -59,11 +67,11 @@ function downloadFullBackup() {
     receivables: cleanReceivables(readJson(RECEIVABLES_KEY, [])),
   };
 
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const blob = await encryptBackupJson(backup, pin);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `mymoney-full-backup-${todayIso()}.json`;
+  link.download = `mymoney-full-backup-${todayIso()}.mymoney`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -78,11 +86,11 @@ export default function TopBackupAdjuster() {
 
       button.dataset.mymoneyBackupAttached = "1";
       button.textContent = "Täielik varukoopia";
-      button.title = "Laadi alla põhiandmed, korduvad kirjed, planeeritud maksed, kategooriaeelarved ja mulle võlgu kirjed";
+      button.title = "Laadi alla PIN-koodiga krüpteeritud MyMoney varukoopia";
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopImmediatePropagation();
-        downloadFullBackup();
+        void downloadFullBackup();
       }, true);
     };
 
