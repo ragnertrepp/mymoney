@@ -3,9 +3,25 @@
   max-height: min(88vh, 900px);
   overflow: auto;
   border-radius: 22px;
-  background: var(--surface, #fff);
+  background: #ffffff;
+  color: #16202a;
   padding: 22px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  -webkit-overflow-scrolling: touch;
+}
+
+.user-guide-panel h1,
+.user-guide-panel h2,
+.user-guide-panel h3,
+.user-guide-panel strong,
+.user-guide-panel p,
+.user-guide-panel span,
+.user-guide-panel small {
+  color: inherit;
+}
+
+.user-guide-panel .eyebrow {
+  color: #58c7a2;
 }
 
 .user-guide-steps {
@@ -20,9 +36,10 @@
   gap: 12px;
   align-items: start;
   padding: 14px;
-  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border: 1px solid #d8dee5;
   border-radius: 14px;
-  background: var(--surface-soft, rgba(127,127,127,.06));
+  background: #f7f9fb;
+  color: #16202a;
 }
 
 .user-guide-steps article > span {
@@ -32,7 +49,8 @@
   place-items: center;
   border-radius: 999px;
   font-weight: 800;
-  background: rgba(80, 120, 255, .14);
+  color: #38506a;
+  background: #e6ecfb;
 }
 
 .user-guide-steps strong,
@@ -43,19 +61,22 @@
 .user-guide-steps p {
   margin: 5px 0 0;
   line-height: 1.45;
-  opacity: .82;
+  color: #536170;
+  opacity: 1;
 }
 
 .guide-note {
   margin-top: 16px;
   padding: 15px;
   border-radius: 14px;
-  background: rgba(80, 120, 255, .09);
+  background: #edf3ff;
+  color: #26384c;
 }
 
 .guide-note p {
   margin: 6px 0 0;
   line-height: 1.45;
+  color: #536170;
 }
 
 .guide-finish {
