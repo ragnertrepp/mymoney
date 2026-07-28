@@ -3,6 +3,7 @@ import { useRef, type ChangeEvent } from "react";
 const STORAGE_KEY = "rebuildme-mymoney-v2";
 const RECURRING_KEY = "rebuildme-mymoney-recurring-v1";
 const PLANNED_KEY = "rebuildme-mymoney-planned-v1";
+const CATEGORY_BUDGET_KEY = "rebuildme-mymoney-category-budgets-v1";
 
 type BackupShape = {
   format?: string;
@@ -11,6 +12,7 @@ type BackupShape = {
   data?: unknown;
   recurring?: unknown[];
   plannedPayments?: unknown[];
+  categoryBudgets?: Record<string, unknown>;
   transactions?: unknown[];
   debts?: unknown[];
   debtPayments?: unknown[];
@@ -42,6 +44,13 @@ function validateMainData(value: unknown) {
   return value;
 }
 
+function cleanCategoryBudgets(value: unknown) {
+  if (!isObject(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, limit]) => typeof limit === "number" && Number.isFinite(limit) && limit > 0),
+  );
+}
+
 function parseBackup(value: unknown) {
   if (!isObject(value)) return null;
   const candidate = value as BackupShape;
@@ -53,6 +62,7 @@ function parseBackup(value: unknown) {
       data,
       recurring: Array.isArray(candidate.recurring) ? candidate.recurring : [],
       plannedPayments: Array.isArray(candidate.plannedPayments) ? candidate.plannedPayments : [],
+      categoryBudgets: cleanCategoryBudgets(candidate.categoryBudgets),
       isFullBackup: true,
     };
   }
@@ -65,6 +75,7 @@ function parseBackup(value: unknown) {
     data,
     recurring: [] as unknown[],
     plannedPayments: [] as unknown[],
+    categoryBudgets: {} as Record<string, unknown>,
     isFullBackup: false,
   };
 }
@@ -85,11 +96,12 @@ export default function BackupRestore() {
 
     const backup = {
       format: "mymoney-full-backup",
-      version: 1,
+      version: 2,
       createdAt: new Date().toISOString(),
       data,
       recurring: readJson(RECURRING_KEY, []),
       plannedPayments: readJson(PLANNED_KEY, []),
+      categoryBudgets: cleanCategoryBudgets(readJson(CATEGORY_BUDGET_KEY, {})),
     };
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -116,7 +128,7 @@ export default function BackupRestore() {
 
       const data = backup.data as BackupShape;
       const accepted = window.confirm(
-        `Taastada varukoopia?\n\nTulud ja kulud: ${data.transactions?.length ?? 0}\nVõlad: ${data.debts?.length ?? 0}\nTodo: ${data.tasks?.length ?? 0}\nKorduvad kirjed: ${backup.recurring.length}\nPlaneeritud maksed: ${backup.plannedPayments.length}\n\nPraegused andmed asendatakse.`,
+        `Taastada varukoopia?\n\nTulud ja kulud: ${data.transactions?.length ?? 0}\nVõlad: ${data.debts?.length ?? 0}\nTodo: ${data.tasks?.length ?? 0}\nKorduvad kirjed: ${backup.recurring.length}\nPlaneeritud maksed: ${backup.plannedPayments.length}\nKategooriaeelarved: ${Object.keys(backup.categoryBudgets).length}\n\nPraegused andmed asendatakse.`,
       );
 
       if (!accepted) return;
@@ -126,12 +138,13 @@ export default function BackupRestore() {
       if (backup.isFullBackup) {
         localStorage.setItem(RECURRING_KEY, JSON.stringify(backup.recurring));
         localStorage.setItem(PLANNED_KEY, JSON.stringify(backup.plannedPayments));
+        localStorage.setItem(CATEGORY_BUDGET_KEY, JSON.stringify(backup.categoryBudgets));
       }
 
       alert(
         backup.isFullBackup
           ? "Täielik varukoopia taastatud. MyMoney avaneb nüüd uuesti."
-          : "Vana tüüpi varukoopia taastatud. Korduvaid ja planeeritud kirjeid see fail ei sisaldanud.",
+          : "Vana tüüpi varukoopia taastatud. Lisatööriistade andmeid see fail ei sisaldanud.",
       );
       window.location.reload();
     } catch {
