@@ -25,7 +25,8 @@
 
 .transaction-editor-panel,
 .recurring-panel,
-.planned-panel {
+.planned-panel,
+.monthly-panel {
   width: min(760px, 100%);
   max-height: min(860px, calc(100vh - 32px));
   overflow: auto;
@@ -68,7 +69,8 @@
 
 .editor-transaction-list,
 .recurring-list,
-.planned-list {
+.planned-list,
+.monthly-list {
   display: grid;
   gap: 9px;
 }
@@ -113,7 +115,8 @@
 }
 
 .recurring-row,
-.planned-row {
+.planned-row,
+.monthly-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px 14px;
@@ -125,18 +128,22 @@
 }
 
 .recurring-row > div:first-child,
-.planned-main {
+.planned-main,
+.monthly-row > div:first-child {
   display: grid;
   min-width: 0;
   gap: 4px;
 }
 
 .recurring-row span,
-.planned-row small {
+.planned-row small,
+.monthly-row small,
+.monthly-row > span {
   color: #94a2b1;
 }
 
-.recurring-row.inactive {
+.recurring-row.inactive,
+.monthly-row.completed {
   opacity: 0.55;
 }
 
@@ -211,6 +218,88 @@
   white-space: nowrap;
 }
 
+.month-switcher {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.month-switcher > div {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.month-switcher strong {
+  color: #f5f7fa;
+  font-size: 20px;
+  text-transform: capitalize;
+}
+
+.month-current-link {
+  padding: 0;
+  border: 0;
+  color: #77d9b0;
+  background: transparent;
+  font-size: 12px;
+}
+
+.month-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.month-summary-grid article {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #2b3948;
+  border-radius: 12px;
+  background: #101820;
+}
+
+.month-summary-grid span {
+  color: #94a2b1;
+  font-size: 12px;
+}
+
+.month-summary-grid strong {
+  color: #f5f7fa;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.monthly-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.monthly-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.monthly-section-heading h3 {
+  margin: 0;
+  color: #f5f7fa;
+}
+
+.monthly-section-heading span {
+  color: #94a2b1;
+  font-size: 12px;
+}
+
+.monthly-row > strong {
+  white-space: nowrap;
+}
+
 @media (max-width: 600px) {
   .v4-tools {
     right: 10px;
@@ -229,7 +318,8 @@
 
   .transaction-editor-panel,
   .recurring-panel,
-  .planned-panel {
+  .planned-panel,
+  .monthly-panel {
     width: 100%;
     max-height: 90vh;
     padding: 14px;
@@ -245,13 +335,15 @@
 
   .editor-transaction-row,
   .recurring-row,
-  .planned-row {
+  .planned-row,
+  .monthly-row {
     grid-template-columns: minmax(0, 1fr) auto;
     padding: 11px;
   }
 
   .editor-transaction-row > strong,
-  .planned-amount {
+  .planned-amount,
+  .monthly-row > strong {
     font-size: 14px;
     white-space: nowrap;
   }
@@ -268,19 +360,34 @@
   .status-summary strong {
     font-size: 18px;
   }
+
+  .month-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .month-summary-grid article {
+    padding: 10px;
+  }
+
+  .month-summary-grid strong {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 380px) {
-  .status-summary {
+  .status-summary,
+  .month-summary-grid {
     grid-template-columns: 1fr;
   }
 
   .recurring-row,
-  .planned-row {
+  .planned-row,
+  .monthly-row {
     grid-template-columns: 1fr;
   }
 
-  .planned-amount {
+  .planned-amount,
+  .monthly-row > strong {
     justify-self: start;
   }
 }
