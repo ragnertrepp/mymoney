@@ -23,9 +23,11 @@
   backdrop-filter: blur(6px);
 }
 
-.transaction-editor-panel {
-  width: min(680px, 100%);
-  max-height: min(820px, calc(100vh - 32px));
+.transaction-editor-panel,
+.recurring-panel,
+.planned-panel {
+  width: min(760px, 100%);
+  max-height: min(860px, calc(100vh - 32px));
   overflow: auto;
   padding: 20px;
   border: 1px solid #344353;
@@ -47,12 +49,16 @@
   color: #f5f7fa;
 }
 
-.editor-form {
+.editor-form,
+.recurring-form,
+.planned-form {
   display: grid;
   gap: 12px;
 }
 
-.editor-actions {
+.editor-actions,
+.recurring-actions,
+.planned-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -60,7 +66,9 @@
   margin-top: 4px;
 }
 
-.editor-transaction-list {
+.editor-transaction-list,
+.recurring-list,
+.planned-list {
   display: grid;
   gap: 9px;
 }
@@ -94,6 +102,115 @@
   color: #94a2b1;
 }
 
+.recurring-toolbar {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0;
+}
+
+.recurring-toolbar small {
+  color: #94a2b1;
+}
+
+.recurring-row,
+.planned-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: start;
+  padding: 13px;
+  border: 1px solid #2b3948;
+  border-radius: 13px;
+  background: #101820;
+}
+
+.recurring-row > div:first-child,
+.planned-main {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.recurring-row span,
+.planned-row small {
+  color: #94a2b1;
+}
+
+.recurring-row.inactive {
+  opacity: 0.55;
+}
+
+.recurring-actions,
+.planned-actions {
+  grid-column: 1 / -1;
+}
+
+.status-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.status-summary span {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #2b3948;
+  border-radius: 11px;
+  color: #94a2b1;
+  background: #101820;
+}
+
+.status-summary strong {
+  color: #f5f7fa;
+  font-size: 20px;
+}
+
+.status-badge {
+  width: max-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.status-badge.status-planned {
+  color: #d8e3ee;
+  background: #263341;
+}
+
+.status-badge.status-paid {
+  color: #06110d;
+  background: #77d9b0;
+}
+
+.status-badge.status-late {
+  color: #210808;
+  background: #ff9898;
+}
+
+.status-badge.status-cancelled {
+  color: #c4cbd3;
+  background: #333a42;
+}
+
+.planned-row.status-late {
+  border-color: #a95d5d;
+}
+
+.planned-row.status-paid {
+  border-color: #3c7c66;
+}
+
+.planned-row.status-cancelled {
+  opacity: 0.55;
+}
+
+.planned-amount {
+  white-space: nowrap;
+}
+
 @media (max-width: 600px) {
   .v4-tools {
     right: 10px;
@@ -110,7 +227,9 @@
     padding: 0;
   }
 
-  .transaction-editor-panel {
+  .transaction-editor-panel,
+  .recurring-panel,
+  .planned-panel {
     width: 100%;
     max-height: 90vh;
     padding: 14px;
@@ -124,13 +243,44 @@
     font-size: 20px;
   }
 
-  .editor-transaction-row {
+  .editor-transaction-row,
+  .recurring-row,
+  .planned-row {
     grid-template-columns: minmax(0, 1fr) auto;
     padding: 11px;
   }
 
-  .editor-transaction-row > strong {
+  .editor-transaction-row > strong,
+  .planned-amount {
     font-size: 14px;
     white-space: nowrap;
+  }
+
+  .status-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .status-summary span {
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .status-summary strong {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .status-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .recurring-row,
+  .planned-row {
+    grid-template-columns: 1fr;
+  }
+
+  .planned-amount {
+    justify-self: start;
   }
 }
