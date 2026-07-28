@@ -1043,4 +1043,117 @@ th {
   transition: width 180ms ease;
 }
 }
+/* --- UI fix: heledam tekst + parem mobiilivaade --- */
+
+.topbar h1,
+.section-heading h2,
+.card h2,
+.card h3,
+.compact-form-card h2 {
+  color: #f5f7fa;
+}
+
+.sub-navigation button,
+.type-switch button {
+  color: #f5f7fa;
+  background: #17212b;
+  border: 1px solid #344353;
+}
+
+.sub-navigation button.active,
+.type-switch button.active {
+  color: #07110d;
+  background: #77d9b0;
+  border-color: #77d9b0;
+}
+
+.transaction-list {
+  display: grid;
+  gap: 10px;
+}
+
+.transaction-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid #283746;
+  border-radius: 12px;
+  background: #101820;
+}
+
+.transaction-row > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.transaction-row > div:first-child strong {
+  display: block;
+  color: #f5f7fa;
+  font-size: 18px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.transaction-row > div:first-child span {
+  display: block;
+  color: #94a2b1;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.transaction-value {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  min-width: 110px;
+}
+
+.transaction-value strong {
+  font-size: 16px;
+}
+
+@media (max-width: 600px) {
+  .topbar h1 {
+    font-size: 22px;
+  }
+
+  .section-heading h2,
+  .card h2,
+  .card h3,
+  .compact-form-card h2 {
+    font-size: 18px;
+  }
+
+  .sub-navigation {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .sub-navigation button {
+    font-size: 12px;
+    padding: 10px 6px;
+  }
+
+  .type-switch button {
+    font-size: 14px;
+  }
+
+  .transaction-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .transaction-value {
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .transaction-value strong {
+    font-size: 18px;
+  }
+}
 }
