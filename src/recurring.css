@@ -1,0 +1,110 @@
+.recurring-panel {
+  width: min(760px, calc(100vw - 24px));
+  max-height: min(880px, calc(100vh - 24px));
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid #344353;
+  border-radius: 18px;
+  background: #111923;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.recurring-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.recurring-form .type-switch,
+.recurring-form .primary-button {
+  grid-column: 1 / -1;
+}
+
+.recurring-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 14px;
+  padding: 12px;
+  border: 1px solid #2a3948;
+  border-radius: 12px;
+  background: #0f171f;
+}
+
+.recurring-toolbar small,
+.recurring-row span {
+  color: #94a2b1;
+}
+
+.recurring-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recurring-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid #2b3948;
+  border-radius: 12px;
+  background: #101820;
+}
+
+.recurring-row > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.recurring-row.inactive {
+  opacity: 0.55;
+}
+
+.recurring-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+}
+
+.recurring-actions .secondary-button {
+  padding: 8px 11px;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .recurring-panel {
+    width: calc(100vw - 12px);
+    max-height: calc(100vh - 12px);
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .recurring-form {
+    grid-template-columns: 1fr;
+  }
+
+  .recurring-form .type-switch,
+  .recurring-form .primary-button {
+    grid-column: auto;
+  }
+
+  .recurring-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recurring-row {
+    grid-template-columns: 1fr;
+  }
+
+  .recurring-row > strong {
+    justify-self: start;
+  }
+
+  .recurring-actions {
+    grid-column: auto;
+  }
+}
