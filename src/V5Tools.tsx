@@ -1,5 +1,6 @@
 import { useState } from "react";
 import BackupRestore from "./BackupRestore";
+import CategoryBudgets from "./CategoryBudgets";
 import CategorySummary from "./CategorySummary";
 import { DataIntegrityTool } from "./DataIntegrity";
 import MonthlyView from "./MonthlyView";
@@ -35,6 +36,11 @@ export default function V5Tools() {
             </p>
 
             <div className="v5-tools-list">
+              <section className="v5-tool-card">
+                <div><strong>Kategooriate eelarvepiirid</strong><span>Määra toidu, transpordi ja muude kategooriate kuupiirid.</span></div>
+                <CategoryBudgets />
+              </section>
+
               <section className="v5-tool-card">
                 <div><strong>Kuude võrdlus</strong><span>Võrdle kategooriate kulusid valitud kuu ja eelmise kuu vahel.</span></div>
                 <MonthComparison />
