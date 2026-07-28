@@ -10,13 +10,15 @@ type Transaction = {
   category?: string;
 };
 
+type ForecastStatus = "good" | "warning" | "danger";
+
 type ForecastRow = {
   category: string;
   limit: number;
   spent: number;
   forecast: number;
   forecastDifference: number;
-  status: "good" | "warning" | "danger";
+  status: ForecastStatus;
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -57,7 +59,7 @@ export default function BudgetForecast() {
     const passedDays = elapsedDays(selectedMonth);
 
     const rows: ForecastRow[] = Object.entries(budgets)
-      .map(([category, limit]) => {
+      .map(([category, limit]): ForecastRow => {
         const spent = transactions
           .filter((item) => item.type === "expense" && item.date?.slice(0, 7) === selectedMonth && (item.category?.trim() || "Muu") === category)
           .reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -67,6 +69,7 @@ export default function BudgetForecast() {
           : spent;
         const forecastDifference = forecast - limit;
         const ratio = limit > 0 ? forecast / limit : 0;
+        const status: ForecastStatus = ratio > 1 ? "danger" : ratio >= 0.9 ? "warning" : "good";
 
         return {
           category,
@@ -74,7 +77,7 @@ export default function BudgetForecast() {
           spent,
           forecast,
           forecastDifference,
-          status: ratio > 1 ? "danger" : ratio >= 0.9 ? "warning" : "good",
+          status,
         };
       })
       .sort((a, b) => b.forecastDifference - a.forecastDifference);
