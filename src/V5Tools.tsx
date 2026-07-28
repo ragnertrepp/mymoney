@@ -3,6 +3,7 @@ import BackupRestore from "./BackupRestore";
 import CategorySummary from "./CategorySummary";
 import { DataIntegrityTool } from "./DataIntegrity";
 import MonthlyView from "./MonthlyView";
+import MonthComparison from "./MonthComparison";
 import PlannedPayments from "./PlannedPayments";
 import RecurringTransactions from "./RecurringTransactions";
 import SearchFilter from "./SearchFilter";
@@ -34,6 +35,11 @@ export default function V5Tools() {
             </p>
 
             <div className="v5-tools-list">
+              <section className="v5-tool-card">
+                <div><strong>Kuude võrdlus</strong><span>Võrdle kategooriate kulusid valitud kuu ja eelmise kuu vahel.</span></div>
+                <MonthComparison />
+              </section>
+
               <section className="v5-tool-card">
                 <div><strong>Kulud kategooriate kaupa</strong><span>Vaata valitud kuu kulude jaotust ja suurimaid kategooriaid.</span></div>
                 <CategorySummary />
