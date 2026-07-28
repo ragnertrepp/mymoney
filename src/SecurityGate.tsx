@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { createPin, hasPin, isValidPinFormat, verifyPin } from "./Security";
-
-const SESSION_UNLOCK_KEY = "rebuildme-mymoney-unlocked-v1";
+import "./SecurityGate.css";
 
 type Props = { children: ReactNode };
 
@@ -15,13 +14,8 @@ export default function SecurityGate({ children }: Props) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const exists = hasPin();
-    setConfigured(exists);
-    try {
-      setUnlocked(exists && sessionStorage.getItem(SESSION_UNLOCK_KEY) === "1");
-    } catch {
-      setUnlocked(false);
-    }
+    setConfigured(hasPin());
+    setUnlocked(false);
     setReady(true);
   }, []);
 
@@ -42,7 +36,6 @@ export default function SecurityGate({ children }: Props) {
       setBusy(true);
       try {
         await createPin(pin);
-        sessionStorage.setItem(SESSION_UNLOCK_KEY, "1");
         setConfigured(true);
         setUnlocked(true);
         setPin("");
@@ -63,7 +56,6 @@ export default function SecurityGate({ children }: Props) {
       setError("Vale PIN-kood.");
       return;
     }
-    sessionStorage.setItem(SESSION_UNLOCK_KEY, "1");
     setUnlocked(true);
     setPin("");
   }
