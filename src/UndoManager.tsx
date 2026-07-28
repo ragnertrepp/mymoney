@@ -6,6 +6,7 @@ const TRACKED_KEYS = [
   "rebuildme-mymoney-recurring-v1",
   "rebuildme-mymoney-planned-v1",
   "rebuildme-mymoney-category-budgets-v1",
+  "rebuildme-mymoney-receivables-v1",
 ];
 
 const KEY_LABELS: Record<string, string> = {
@@ -13,6 +14,7 @@ const KEY_LABELS: Record<string, string> = {
   "rebuildme-mymoney-recurring-v1": "Korduvad kirjed",
   "rebuildme-mymoney-planned-v1": "Planeeritud maksed",
   "rebuildme-mymoney-category-budgets-v1": "Kategooriaeelarved",
+  "rebuildme-mymoney-receivables-v1": "Mulle võlgu",
 };
 
 type UndoEntry = {
