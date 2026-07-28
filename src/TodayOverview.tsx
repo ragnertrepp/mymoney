@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 const STORAGE_KEY = "rebuildme-mymoney-v2";
 const PLANNED_KEY = "rebuildme-mymoney-planned-v1";
 const CATEGORY_BUDGET_KEY = "rebuildme-mymoney-category-budgets-v1";
+const RECEIVABLES_KEY = "rebuildme-mymoney-receivables-v1";
 
 type Transaction = {
   id: string;
@@ -20,6 +21,15 @@ type PlannedPayment = {
   amount: number;
   dueDate: string;
   status: "planned" | "paid" | "cancelled";
+};
+
+type Receivable = {
+  id: string;
+  name: string;
+  amount: number;
+  dueDate: string;
+  note?: string;
+  status: "open" | "paid";
 };
 
 type AppData = {
@@ -96,6 +106,7 @@ export default function TodayOverview() {
     const data = readJson<AppData>(STORAGE_KEY, {});
     const planned = readJson<PlannedPayment[]>(PLANNED_KEY, []);
     const categoryBudgets = readJson<Record<string, number>>(CATEGORY_BUDGET_KEY, {});
+    const receivables = readJson<Receivable[]>(RECEIVABLES_KEY, []);
     const month = currentMonth();
     const transactions = Array.isArray(data.transactions) ? data.transactions : [];
 
@@ -131,6 +142,16 @@ export default function TodayOverview() {
       }
     }
 
+    const openReceivables = (Array.isArray(receivables) ? receivables : [])
+      .filter((item) => item.status === "open")
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    const overdueReceivables = openReceivables.filter((item) => item.dueDate < todayIso());
+    const incomingSevenDays = openReceivables.filter((item) => {
+      const days = daysUntil(item.dueDate);
+      return days >= 0 && days <= 7;
+    });
+    const incomingSevenDaysTotal = incomingSevenDays.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
     const budgetAlerts: BudgetAlert[] = Object.entries(categoryBudgets)
       .map(([category, limit]) => {
         const spent = categorySpending.get(category) ?? 0;
@@ -146,8 +167,8 @@ export default function TodayOverview() {
       .filter((item) => item.percent >= 80)
       .sort((a, b) => b.percent - a.percent);
 
-    const hasCriticalAlert = late.length > 0 || budgetAlerts.some((item) => item.level === "danger");
-    const attentionCount = late.length + budgetAlerts.length;
+    const hasCriticalAlert = late.length > 0 || overdueReceivables.length > 0 || budgetAlerts.some((item) => item.level === "danger");
+    const attentionCount = late.length + overdueReceivables.length + budgetAlerts.length;
 
     return {
       income,
@@ -158,6 +179,11 @@ export default function TodayOverview() {
       upcomingTotal,
       nextPayment: unpaid[0],
       budgetAlerts,
+      openReceivables,
+      overdueReceivables,
+      incomingSevenDays,
+      incomingSevenDaysTotal,
+      nextReceivable: openReceivables[0],
       hasCriticalAlert,
       attentionCount,
     };
@@ -173,7 +199,7 @@ export default function TodayOverview() {
           <h2>
             {summary.attentionCount > 0
               ? `${summary.attentionCount} asja vajab tähelepanu`
-              : "Maksed ja eelarved on kontrolli all"}
+              : "Maksed, laekumised ja eelarved on kontrolli all"}
           </h2>
         </div>
         <span className={`today-status-pill ${summary.hasCriticalAlert ? "danger" : summary.attentionCount > 0 ? "warning" : "good"}`}>
@@ -193,14 +219,24 @@ export default function TodayOverview() {
           <small>{summary.nextSevenDays.length} planeeritud makset</small>
         </article>
         <article>
+          <span>Järgmise 7 päeva laekumised</span>
+          <strong className="positive-text">{euro(summary.incomingSevenDaysTotal)}</strong>
+          <small>{summary.incomingSevenDays.length} oodatavat makset</small>
+        </article>
+        <article>
           <span>Eelarvehoiatused</span>
           <strong>{summary.budgetAlerts.length}</strong>
           <small>{summary.budgetAlerts.filter((item) => item.level === "danger").length} kategooriat üle piiri</small>
         </article>
         <article>
-          <span>Järgmine tähtaeg</span>
+          <span>Järgmine väljaminek</span>
           <strong>{summary.nextPayment ? summary.nextPayment.name : "Puudub"}</strong>
           <small>{summary.nextPayment ? `${summary.nextPayment.dueDate} · ${euro(summary.nextPayment.amount)}` : "Ühtegi tasumata makset pole"}</small>
+        </article>
+        <article>
+          <span>Järgmine laekumine</span>
+          <strong>{summary.nextReceivable ? summary.nextReceivable.name : "Puudub"}</strong>
+          <small>{summary.nextReceivable ? `${summary.nextReceivable.dueDate} · ${euro(summary.nextReceivable.amount)}` : "Ühtegi oodatavat laekumist pole"}</small>
         </article>
       </div>
 
@@ -208,8 +244,19 @@ export default function TodayOverview() {
         <div className="today-alert-list">
           {summary.late.slice(0, 3).map((item) => (
             <div className="today-alert-row" key={item.id}>
-              <div><strong>{item.name}</strong><span>Tähtaeg {item.dueDate}</span></div>
+              <div><strong>{item.name}</strong><span>Makse hilinenud · tähtaeg {item.dueDate}</span></div>
               <strong>{euro(item.amount)}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {summary.overdueReceivables.length > 0 && (
+        <div className="today-alert-list">
+          {summary.overdueReceivables.slice(0, 3).map((item) => (
+            <div className="today-alert-row" key={item.id}>
+              <div><strong>{item.name}</strong><span>Sulle võlgnetav makse hilinenud · {item.dueDate}{item.note ? ` · ${item.note}` : ""}</span></div>
+              <strong className="positive-text">{euro(item.amount)}</strong>
             </div>
           ))}
         </div>
