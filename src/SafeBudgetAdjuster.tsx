@@ -48,12 +48,16 @@ function calculate() {
   const currentBalance = Number(data.settings?.startingBalance || 0) + income - expenses;
   const reserve = Math.max(0, Number(data.settings?.monthlyReserve || 0));
 
-  const debtRemaining = debts.reduce((sum, debt) => {
-    const paid = debtPayments
-      .filter((payment) => payment.debtId === debt.id && payment.date?.slice(0, 7) === month)
-      .reduce((total, payment) => total + Number(payment.amount || 0), 0);
-    return sum + Math.max(0, Number(debt.minimumPayment || 0) - paid);
-  }, 0);
+  const paidByDebt = new Map<string, number>();
+  for (const payment of debtPayments) {
+    if (payment.date?.slice(0, 7) !== month) continue;
+    paidByDebt.set(payment.debtId, (paidByDebt.get(payment.debtId) ?? 0) + Number(payment.amount || 0));
+  }
+
+  const debtRemaining = debts.reduce(
+    (sum, debt) => sum + Math.max(0, Number(debt.minimumPayment || 0) - (paidByDebt.get(debt.id) ?? 0)),
+    0,
+  );
 
   const plannedRemaining = (Array.isArray(planned) ? planned : [])
     .filter((item) => item.status === "planned" && item.dueDate?.slice(0, 7) === month)
@@ -77,44 +81,40 @@ function replaceSummaryValue(label: string, value: string, detail?: string) {
   if (!card) return;
   const strong = card.querySelector("strong");
   const small = card.querySelector("small");
-  if (strong) strong.textContent = value;
-  if (small && detail) small.textContent = detail;
+  if (strong && strong.textContent !== value) strong.textContent = value;
+  if (small && detail && small.textContent !== detail) small.textContent = detail;
 }
 
 export default function SafeBudgetAdjuster() {
   useEffect(() => {
-    let applying = false;
+    let frame = 0;
 
     const apply = () => {
-      if (applying) return;
-      applying = true;
-
-      const values = calculate();
-      replaceSummaryValue(
-        "Turvaliselt kasutada",
-        euro(Math.max(0, values.safeToSpend)),
-        `Pärast reservi, võlamakseid ja ${euro(values.plannedRemaining)} planeeritud makseid`,
-      );
-      replaceSummaryValue("Päevane eelarve", euro(values.dailyBudget));
-      replaceSummaryValue(
-        "Prognoos",
-        euro(values.safeToSpend),
-        "Pärast reservi, võla- ja planeeritud makseid",
-      );
-
-      applying = false;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const values = calculate();
+        replaceSummaryValue(
+          "Turvaliselt kasutada",
+          euro(Math.max(0, values.safeToSpend)),
+          `Pärast reservi, võlamakseid ja ${euro(values.plannedRemaining)} planeeritud makseid`,
+        );
+        replaceSummaryValue("Päevane eelarve", euro(values.dailyBudget));
+        replaceSummaryValue(
+          "Prognoos",
+          euro(values.safeToSpend),
+          "Pärast reservi, võla- ja planeeritud makseid",
+        );
+      });
     };
 
     apply();
-    const observer = new MutationObserver(() => window.requestAnimationFrame(apply));
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    window.addEventListener("mymoney-data-changed", apply);
     window.addEventListener("storage", apply);
-    document.addEventListener("click", apply);
 
     return () => {
-      observer.disconnect();
+      cancelAnimationFrame(frame);
+      window.removeEventListener("mymoney-data-changed", apply);
       window.removeEventListener("storage", apply);
-      document.removeEventListener("click", apply);
     };
   }, []);
 
