@@ -4,6 +4,7 @@ const STORAGE_KEY = "rebuildme-mymoney-v2";
 const RECURRING_KEY = "rebuildme-mymoney-recurring-v1";
 const PLANNED_KEY = "rebuildme-mymoney-planned-v1";
 const CATEGORY_BUDGET_KEY = "rebuildme-mymoney-category-budgets-v1";
+const RECEIVABLES_KEY = "rebuildme-mymoney-receivables-v1";
 
 type BackupShape = {
   format?: string;
@@ -13,6 +14,7 @@ type BackupShape = {
   recurring?: unknown[];
   plannedPayments?: unknown[];
   categoryBudgets?: Record<string, unknown>;
+  receivables?: unknown[];
   transactions?: unknown[];
   debts?: unknown[];
   debtPayments?: unknown[];
@@ -51,6 +53,17 @@ function cleanCategoryBudgets(value: unknown) {
   );
 }
 
+function cleanReceivables(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => {
+    if (!isObject(item)) return false;
+    return typeof item.id === "string" && typeof item.name === "string" && item.name.trim() !== "" &&
+      typeof item.amount === "number" && Number.isFinite(item.amount) && item.amount > 0 &&
+      typeof item.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) &&
+      (item.status === "open" || item.status === "paid");
+  });
+}
+
 function parseBackup(value: unknown) {
   if (!isObject(value)) return null;
   const candidate = value as BackupShape;
@@ -63,6 +76,7 @@ function parseBackup(value: unknown) {
       recurring: Array.isArray(candidate.recurring) ? candidate.recurring : [],
       plannedPayments: Array.isArray(candidate.plannedPayments) ? candidate.plannedPayments : [],
       categoryBudgets: cleanCategoryBudgets(candidate.categoryBudgets),
+      receivables: cleanReceivables(candidate.receivables),
       isFullBackup: true,
     };
   }
@@ -76,6 +90,7 @@ function parseBackup(value: unknown) {
     recurring: [] as unknown[],
     plannedPayments: [] as unknown[],
     categoryBudgets: {} as Record<string, unknown>,
+    receivables: [] as unknown[],
     isFullBackup: false,
   };
 }
@@ -96,12 +111,13 @@ export default function BackupRestore() {
 
     const backup = {
       format: "mymoney-full-backup",
-      version: 2,
+      version: 3,
       createdAt: new Date().toISOString(),
       data,
       recurring: readJson(RECURRING_KEY, []),
       plannedPayments: readJson(PLANNED_KEY, []),
       categoryBudgets: cleanCategoryBudgets(readJson(CATEGORY_BUDGET_KEY, {})),
+      receivables: cleanReceivables(readJson(RECEIVABLES_KEY, [])),
     };
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -128,7 +144,7 @@ export default function BackupRestore() {
 
       const data = backup.data as BackupShape;
       const accepted = window.confirm(
-        `Taastada varukoopia?\n\nTulud ja kulud: ${data.transactions?.length ?? 0}\nVõlad: ${data.debts?.length ?? 0}\nTodo: ${data.tasks?.length ?? 0}\nKorduvad kirjed: ${backup.recurring.length}\nPlaneeritud maksed: ${backup.plannedPayments.length}\nKategooriaeelarved: ${Object.keys(backup.categoryBudgets).length}\n\nPraegused andmed asendatakse.`,
+        `Taastada varukoopia?\n\nTulud ja kulud: ${data.transactions?.length ?? 0}\nVõlad: ${data.debts?.length ?? 0}\nTodo: ${data.tasks?.length ?? 0}\nKorduvad kirjed: ${backup.recurring.length}\nPlaneeritud maksed: ${backup.plannedPayments.length}\nKategooriaeelarved: ${Object.keys(backup.categoryBudgets).length}\nMulle võlgu: ${backup.receivables.length}\n\nPraegused andmed asendatakse.`,
       );
 
       if (!accepted) return;
@@ -139,6 +155,7 @@ export default function BackupRestore() {
         localStorage.setItem(RECURRING_KEY, JSON.stringify(backup.recurring));
         localStorage.setItem(PLANNED_KEY, JSON.stringify(backup.plannedPayments));
         localStorage.setItem(CATEGORY_BUDGET_KEY, JSON.stringify(backup.categoryBudgets));
+        localStorage.setItem(RECEIVABLES_KEY, JSON.stringify(backup.receivables));
       }
 
       alert(
