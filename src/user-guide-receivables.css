@@ -1,0 +1,161 @@
+.user-guide-panel {
+  width: min(760px, calc(100vw - 24px));
+  max-height: min(88vh, 900px);
+  overflow: auto;
+  border-radius: 22px;
+  background: var(--surface, #fff);
+  padding: 22px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.user-guide-steps {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.user-guide-steps article {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 14px;
+  background: var(--surface-soft, rgba(127,127,127,.06));
+}
+
+.user-guide-steps article > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-weight: 800;
+  background: rgba(80, 120, 255, .14);
+}
+
+.user-guide-steps strong,
+.user-guide-steps p {
+  display: block;
+}
+
+.user-guide-steps p {
+  margin: 5px 0 0;
+  line-height: 1.45;
+  opacity: .82;
+}
+
+.guide-note {
+  margin-top: 16px;
+  padding: 15px;
+  border-radius: 14px;
+  background: rgba(80, 120, 255, .09);
+}
+
+.guide-note p {
+  margin: 6px 0 0;
+  line-height: 1.45;
+}
+
+.guide-finish {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.receivables-section {
+  margin-top: 22px;
+}
+
+.receivables-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+.receivables-summary-grid article {
+  padding: 15px;
+  border-radius: 16px;
+  background: var(--surface, rgba(255,255,255,.07));
+  border: 1px solid var(--border, rgba(255,255,255,.1));
+}
+
+.receivables-summary-grid span,
+.receivables-summary-grid strong {
+  display: block;
+}
+
+.receivables-summary-grid strong {
+  margin-top: 5px;
+  font-size: 1.25rem;
+}
+
+.receivable-form-card {
+  margin-bottom: 16px;
+}
+
+.receivables-list {
+  display: grid;
+  gap: 10px;
+}
+
+.receivable-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border, rgba(255,255,255,.1));
+  border-radius: 14px;
+}
+
+.receivable-row > div:first-child strong,
+.receivable-row > div:first-child span {
+  display: block;
+}
+
+.receivable-row > div:first-child span {
+  margin-top: 4px;
+  opacity: .75;
+  font-size: .9rem;
+}
+
+.receivable-row.late {
+  border-color: rgba(220, 60, 60, .45);
+  background: rgba(220, 60, 60, .06);
+}
+
+.receivable-row.paid {
+  opacity: .74;
+}
+
+.receivable-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 680px) {
+  .user-guide-panel {
+    width: calc(100vw - 14px);
+    max-height: 94vh;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .receivables-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .receivable-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .receivable-actions {
+    justify-content: flex-start;
+  }
+}
