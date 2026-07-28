@@ -5,6 +5,7 @@ import DebtReceivablesPortal from "./DebtReceivablesPortal";
 import DeferredIntegrityGuard from "./DeferredIntegrityGuard";
 import NavigationAdjuster from "./NavigationAdjuster";
 import SafeBudgetAdjuster from "./SafeBudgetAdjuster";
+import SecurityGate from "./SecurityGate";
 import TodayOverview from "./TodayOverview";
 import TopBackupAdjuster from "./TopBackupAdjuster";
 import UndoManagerGuard from "./UndoManager";
@@ -32,7 +33,7 @@ function FirstRunGuide() {
 
 export default function AppV4() {
   return (
-    <>
+    <SecurityGate>
       <UndoManagerGuard />
       <AppV3 />
       <FirstRunGuide />
@@ -44,6 +45,6 @@ export default function AppV4() {
       <TodayOverview />
       <TopBackupAdjuster />
       <V5Tools />
-    </>
+    </SecurityGate>
   );
 }
