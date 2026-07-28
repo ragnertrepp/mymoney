@@ -8,6 +8,7 @@ import "./recurring.css";
 import "./v5.css";
 import "./today-overview.css";
 import "./search.css";
+import "./category-summary.css";
 import App from "./AppV4";
 
 createRoot(document.getElementById("root")!).render(
