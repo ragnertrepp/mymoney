@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./mobile.css";
 import "./polish.css";
-import App from "./AppV3";
+import App from "./AppV4";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
