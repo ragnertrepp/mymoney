@@ -6,6 +6,7 @@ import "./polish.css";
 import "./v4.css";
 import "./recurring.css";
 import "./v5.css";
+import "./today-overview.css";
 import App from "./AppV4";
 
 createRoot(document.getElementById("root")!).render(
