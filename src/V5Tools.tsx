@@ -1,16 +1,21 @@
-import { useState } from "react";
-import BackupRestore from "./BackupRestore";
-import BudgetForecast from "./BudgetForecast";
-import CategoryBudgets from "./CategoryBudgets";
-import CategorySummary from "./CategorySummary";
-import { DataIntegrityTool } from "./DataIntegrity";
-import MonthlyView from "./MonthlyView";
-import MonthComparison from "./MonthComparison";
-import PlannedPayments from "./PlannedPayments";
-import RecurringTransactions from "./RecurringTransactions";
-import SearchFilter from "./SearchFilter";
-import TransactionEditor from "./TransactionEditor";
-import { UndoManagerTool } from "./UndoManager";
+import { lazy, Suspense, useState } from "react";
+
+const BackupRestore = lazy(() => import("./BackupRestore"));
+const BudgetForecast = lazy(() => import("./BudgetForecast"));
+const CategoryBudgets = lazy(() => import("./CategoryBudgets"));
+const CategorySummary = lazy(() => import("./CategorySummary"));
+const MonthlyView = lazy(() => import("./MonthlyView"));
+const MonthComparison = lazy(() => import("./MonthComparison"));
+const PlannedPayments = lazy(() => import("./PlannedPayments"));
+const RecurringTransactions = lazy(() => import("./RecurringTransactions"));
+const SearchFilter = lazy(() => import("./SearchFilter"));
+const TransactionEditor = lazy(() => import("./TransactionEditor"));
+const DataIntegrityTool = lazy(() => import("./DataIntegrity").then((module) => ({ default: module.DataIntegrityTool })));
+const UndoManagerTool = lazy(() => import("./UndoManager").then((module) => ({ default: module.UndoManagerTool })));
+
+function LoadingTool() {
+  return <div className="v5-tool-loading">Laadin…</div>;
+}
 
 export default function V5Tools() {
   const [open, setOpen] = useState(false);
@@ -36,67 +41,69 @@ export default function V5Tools() {
               Kõik lisatööriistad on nüüd ühes kohas. Ava vajalik osa ja tee muudatused.
             </p>
 
-            <div className="v5-tools-list">
-              <section className="v5-tool-card">
-                <div><strong>Eelarveprognoos</strong><span>Vaata kulutempo põhjal, millised kategooriad võivad kuu lõpuks piiri ületada.</span></div>
-                <BudgetForecast />
-              </section>
+            <Suspense fallback={<LoadingTool />}>
+              <div className="v5-tools-list">
+                <section className="v5-tool-card">
+                  <div><strong>Eelarveprognoos</strong><span>Vaata kulutempo põhjal, millised kategooriad võivad kuu lõpuks piiri ületada.</span></div>
+                  <BudgetForecast />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Kategooriate eelarvepiirid</strong><span>Määra toidu, transpordi ja muude kategooriate kuupiirid.</span></div>
-                <CategoryBudgets />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Kategooriate eelarvepiirid</strong><span>Määra toidu, transpordi ja muude kategooriate kuupiirid.</span></div>
+                  <CategoryBudgets />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Kuude võrdlus</strong><span>Võrdle kategooriate kulusid valitud kuu ja eelmise kuu vahel.</span></div>
-                <MonthComparison />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Kuude võrdlus</strong><span>Võrdle kategooriate kulusid valitud kuu ja eelmise kuu vahel.</span></div>
+                  <MonthComparison />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Kulud kategooriate kaupa</strong><span>Vaata valitud kuu kulude jaotust ja suurimaid kategooriaid.</span></div>
-                <CategorySummary />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Kulud kategooriate kaupa</strong><span>Vaata valitud kuu kulude jaotust ja suurimaid kategooriaid.</span></div>
+                  <CategorySummary />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Otsing ja filtrid</strong><span>Leia kirjeid nime, kategooria, kuu, tüübi või summa järgi.</span></div>
-                <SearchFilter />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Otsing ja filtrid</strong><span>Leia kirjeid nime, kategooria, kuu, tüübi või summa järgi.</span></div>
+                  <SearchFilter />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Võta tagasi</strong><span>Taasta viimane tulu-, kulu-, makse- või püsikirje muudatus.</span></div>
-                <UndoManagerTool />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Võta tagasi</strong><span>Taasta viimane tulu-, kulu-, makse- või püsikirje muudatus.</span></div>
+                  <UndoManagerTool />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Andmete kontroll</strong><span>Leia vigased summad, kuupäevad ja katkised kirjed.</span></div>
-                <DataIntegrityTool />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Andmete kontroll</strong><span>Leia vigased summad, kuupäevad ja katkised kirjed.</span></div>
+                  <DataIntegrityTool />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Kuude ülevaade</strong><span>Vaata varasemaid ja tulevasi kuid.</span></div>
-                <MonthlyView />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Kuude ülevaade</strong><span>Vaata varasemaid ja tulevasi kuid.</span></div>
+                  <MonthlyView />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Planeeritud maksed</strong><span>Jälgi tähtaegu, makstud ja hilinenud arveid.</span></div>
-                <PlannedPayments />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Planeeritud maksed</strong><span>Jälgi tähtaegu, makstud ja hilinenud arveid.</span></div>
+                  <PlannedPayments />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Korduvad kirjed</strong><span>Halda palka, üüri ja muid püsikulusid.</span></div>
-                <RecurringTransactions />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Korduvad kirjed</strong><span>Halda palka, üüri ja muid püsikulusid.</span></div>
+                  <RecurringTransactions />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Muuda kirjeid</strong><span>Paranda summat, kuupäeva või kategooriat.</span></div>
-                <TransactionEditor />
-              </section>
+                <section className="v5-tool-card">
+                  <div><strong>Muuda kirjeid</strong><span>Paranda summat, kuupäeva või kategooriat.</span></div>
+                  <TransactionEditor />
+                </section>
 
-              <section className="v5-tool-card">
-                <div><strong>Varukoopia</strong><span>Salvesta või taasta kõik MyMoney andmed.</span></div>
-                <BackupRestore />
-              </section>
-            </div>
+                <section className="v5-tool-card">
+                  <div><strong>Varukoopia</strong><span>Salvesta või taasta kõik MyMoney andmed.</span></div>
+                  <BackupRestore />
+                </section>
+              </div>
+            </Suspense>
           </aside>
         </div>
       )}
