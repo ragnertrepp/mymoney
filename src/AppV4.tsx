@@ -1,6 +1,6 @@
 import AppV3 from "./AppV3";
 import AffordabilityAdjuster from "./AffordabilityAdjuster";
-import DataIntegrityGuard from "./DataIntegrity";
+import DeferredIntegrityGuard from "./DeferredIntegrityGuard";
 import SafeBudgetAdjuster from "./SafeBudgetAdjuster";
 import TodayOverview from "./TodayOverview";
 import TopBackupAdjuster from "./TopBackupAdjuster";
@@ -12,7 +12,7 @@ export default function AppV4() {
     <>
       <UndoManagerGuard />
       <AppV3 />
-      <DataIntegrityGuard />
+      <DeferredIntegrityGuard />
       <SafeBudgetAdjuster />
       <AffordabilityAdjuster />
       <TodayOverview />
