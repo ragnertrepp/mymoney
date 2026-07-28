@@ -5,7 +5,15 @@ const TRACKED_KEYS = [
   "rebuildme-mymoney-v2",
   "rebuildme-mymoney-recurring-v1",
   "rebuildme-mymoney-planned-v1",
+  "rebuildme-mymoney-category-budgets-v1",
 ];
+
+const KEY_LABELS: Record<string, string> = {
+  "rebuildme-mymoney-v2": "Põhiandmed",
+  "rebuildme-mymoney-recurring-v1": "Korduvad kirjed",
+  "rebuildme-mymoney-planned-v1": "Planeeritud maksed",
+  "rebuildme-mymoney-category-budgets-v1": "Kategooriaeelarved",
+};
 
 type UndoEntry = {
   id: string;
@@ -112,7 +120,11 @@ export function UndoManagerTool() {
     <div className="undo-tool">
       <div className="integrity-status good">
         <strong>{latest ? "Viimase muudatuse saab tagasi võtta" : "Tagasivõetavaid muudatusi pole"}</strong>
-        <span>{latest ? new Date(latest.createdAt).toLocaleString("et-EE") : "Ajalugu on tühi"}</span>
+        <span>
+          {latest
+            ? `${KEY_LABELS[latest.key] ?? "Andmed"} · ${new Date(latest.createdAt).toLocaleString("et-EE")}`
+            : "Ajalugu on tühi"}
+        </span>
       </div>
       <div className="integrity-actions">
         <button className="primary-button" disabled={!latest} onClick={undo}>Võta viimane muudatus tagasi</button>
