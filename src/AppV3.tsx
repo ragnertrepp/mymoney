@@ -64,10 +64,9 @@ const initialData: AppData = {
 };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
-const monthKey = (date: string) => date.slice(0, 7);
 const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const euro = (value: number) =>
-  new Intl.NumberFormat("et-EE", { style: "currency", currency: "EUR" }).format(value);
+  new Intl.NumberFormat("et-FI", { style: "currency", currency: "EUR" }).format(value);
 
 function normalizeData(value: unknown): AppData {
   const candidate = value as Partial<AppData> | null;
@@ -131,39 +130,59 @@ export default function AppV3() {
 
   const currentMonth = todayIso().slice(0, 7);
 
-  const monthTransactions = useMemo(
-    () => data.transactions.filter((item) => monthKey(item.date) === currentMonth),
-    [data.transactions, currentMonth],
-  );
+  const monthStats = useMemo(() => {
+    const monthTransactions: Transaction[] = [];
+    let monthlyIncome = 0;
+    let monthlyExpenses = 0;
 
-  const monthDebtPayments = useMemo(
-    () => data.debtPayments.filter((item) => monthKey(item.date) === currentMonth),
-    [data.debtPayments, currentMonth],
-  );
+    for (const item of data.transactions) {
+      if (item.date?.slice(0, 7) !== currentMonth) continue;
+      monthTransactions.push(item);
+      if (item.type === "income") monthlyIncome += Number(item.amount || 0);
+      else if (item.type === "expense") monthlyExpenses += Number(item.amount || 0);
+    }
 
-  const monthlyIncome = monthTransactions
-    .filter((item) => item.type === "income")
-    .reduce((sum, item) => sum + item.amount, 0);
+    const monthDebtPayments: DebtPayment[] = [];
+    const debtPaidById = new Map<string, number>();
+    let monthlyDebtPaid = 0;
 
-  const monthlyExpenses = monthTransactions
-    .filter((item) => item.type === "expense")
-    .reduce((sum, item) => sum + item.amount, 0);
+    for (const payment of data.debtPayments) {
+      if (payment.date?.slice(0, 7) !== currentMonth) continue;
+      monthDebtPayments.push(payment);
+      const amount = Number(payment.amount || 0);
+      monthlyDebtPaid += amount;
+      debtPaidById.set(payment.debtId, (debtPaidById.get(payment.debtId) ?? 0) + amount);
+    }
 
-  const currentBalance = data.settings.startingBalance + monthlyIncome - monthlyExpenses;
-  const monthlyDebtPlan = data.debts.reduce((sum, debt) => sum + debt.minimumPayment, 0);
-  const monthlyDebtPaid = monthDebtPayments.reduce((sum, payment) => sum + payment.amount, 0);
+    let monthlyDebtPlan = 0;
+    let monthlyDebtRemaining = 0;
+    let totalDebt = 0;
+    let highestInterest = 0;
 
-  const monthlyDebtRemaining = data.debts.reduce((sum, debt) => {
-    const paid = monthDebtPayments
-      .filter((payment) => payment.debtId === debt.id)
-      .reduce((total, payment) => total + payment.amount, 0);
-    return sum + Math.max(0, debt.minimumPayment - paid);
-  }, 0);
+    for (const debt of data.debts) {
+      monthlyDebtPlan += Number(debt.minimumPayment || 0);
+      totalDebt += Number(debt.balance || 0);
+      highestInterest = Math.max(highestInterest, Number(debt.interest || 0));
+      const paid = debtPaidById.get(debt.id) ?? 0;
+      monthlyDebtRemaining += Math.max(0, Number(debt.minimumPayment || 0) - paid);
+    }
 
-  const safeToSpend =
-    currentBalance - monthlyDebtRemaining - Math.max(0, data.settings.monthlyReserve);
+    return {
+      monthTransactions,
+      monthDebtPayments,
+      debtPaidById,
+      monthlyIncome,
+      monthlyExpenses,
+      monthlyDebtPlan,
+      monthlyDebtPaid,
+      monthlyDebtRemaining,
+      totalDebt,
+      highestInterest,
+    };
+  }, [data.transactions, data.debtPayments, data.debts, currentMonth]);
 
-  const totalDebt = data.debts.reduce((sum, debt) => sum + debt.balance, 0);
+  const currentBalance = data.settings.startingBalance + monthStats.monthlyIncome - monthStats.monthlyExpenses;
+  const safeToSpend = currentBalance - monthStats.monthlyDebtRemaining - Math.max(0, data.settings.monthlyReserve);
 
   const remainingDays = useMemo(() => {
     const now = new Date();
@@ -172,12 +191,13 @@ export default function AppV3() {
   }, []);
 
   const dailyBudget = Math.max(0, safeToSpend / remainingDays);
-  const sortedDebts = [...data.debts].sort((a, b) =>
+  const sortedDebts = useMemo(() => [...data.debts].sort((a, b) =>
     a.priority !== b.priority ? a.priority - b.priority : b.interest - a.interest,
-  );
-  const upcomingTasks = [...data.tasks]
+  ), [data.debts]);
+  const upcomingTasks = useMemo(() => [...data.tasks]
     .filter((task) => !task.completed)
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort((a, b) => a.date.localeCompare(b.date)), [data.tasks]);
+  const sortedTasks = useMemo(() => [...data.tasks].sort((a, b) => a.date.localeCompare(b.date)), [data.tasks]);
 
   const purchaseValue = Number(purchaseAmount) || 0;
   const affordability = useMemo(() => {
@@ -387,17 +407,17 @@ export default function AppV3() {
               safeToSpend={safeToSpend}
               dailyBudget={dailyBudget}
               remainingDays={remainingDays}
-              totalDebt={totalDebt}
+              totalDebt={monthStats.totalDebt}
               debtCount={data.debts.length}
             />
 
             <section className="payment-progress card">
               <div>
                 <p className="eyebrow">Selle kuu võlaplaan</p>
-                <h2>{euro(monthlyDebtPaid)} / {euro(monthlyDebtPlan)} makstud</h2>
+                <h2>{euro(monthStats.monthlyDebtPaid)} / {euro(monthStats.monthlyDebtPlan)} makstud</h2>
               </div>
-              <ProgressBar value={monthlyDebtPlan > 0 ? monthlyDebtPaid / monthlyDebtPlan : 0} />
-              <span>Veel maksta: {euro(monthlyDebtRemaining)}</span>
+              <ProgressBar value={monthStats.monthlyDebtPlan > 0 ? monthStats.monthlyDebtPaid / monthStats.monthlyDebtPlan : 0} />
+              <span>Veel maksta: {euro(monthStats.monthlyDebtRemaining)}</span>
             </section>
 
             <section className="two-column">
@@ -448,9 +468,9 @@ export default function AppV3() {
             {budgetTab === "overview" && (
               <>
                 <section className="summary-grid">
-                  <SummaryCard label="Sissetulekud" value={euro(monthlyIncome)} detail="Sellel kuul" />
-                  <SummaryCard label="Kulud" value={euro(monthlyExpenses)} detail="Sellel kuul" />
-                  <SummaryCard label="Võlamaksed" value={euro(monthlyDebtPaid)} detail={`Plaan ${euro(monthlyDebtPlan)}`} />
+                  <SummaryCard label="Sissetulekud" value={euro(monthStats.monthlyIncome)} detail="Sellel kuul" />
+                  <SummaryCard label="Kulud" value={euro(monthStats.monthlyExpenses)} detail="Sellel kuul" />
+                  <SummaryCard label="Võlamaksed" value={euro(monthStats.monthlyDebtPaid)} detail={`Plaan ${euro(monthStats.monthlyDebtPlan)}`} />
                   <SummaryCard label="Prognoos" value={euro(safeToSpend)} detail="Pärast reservi ja makseid" />
                 </section>
 
@@ -533,10 +553,10 @@ export default function AppV3() {
         {tab === "debts" && (
           <>
             <section className="summary-grid">
-              <SummaryCard label="Võlgu kokku" value={euro(totalDebt)} detail={`${data.debts.length} aktiivset võlga`} />
-              <SummaryCard label="Kuu plaan" value={euro(monthlyDebtPlan)} detail="Minimaalsed maksed" />
-              <SummaryCard label="Makstud" value={euro(monthlyDebtPaid)} detail={`Veel ${euro(monthlyDebtRemaining)}`} />
-              <SummaryCard label="Kõrgeim intress" value={`${Math.max(0, ...data.debts.map((d) => d.interest))}%`} detail="Kõige kallim võlg" />
+              <SummaryCard label="Võlgu kokku" value={euro(monthStats.totalDebt)} detail={`${data.debts.length} aktiivset võlga`} />
+              <SummaryCard label="Kuu plaan" value={euro(monthStats.monthlyDebtPlan)} detail="Minimaalsed maksed" />
+              <SummaryCard label="Makstud" value={euro(monthStats.monthlyDebtPaid)} detail={`Veel ${euro(monthStats.monthlyDebtRemaining)}`} />
+              <SummaryCard label="Kõrgeim intress" value={`${monthStats.highestInterest}%`} detail="Kõige kallim võlg" />
             </section>
 
             <section className="card">
@@ -559,7 +579,7 @@ export default function AppV3() {
               {sortedDebts.length === 0 ? <EmptyState text="Võlatabel on tühi." /> : (
                 <div className="debt-list">
                   {sortedDebts.map((debt) => {
-                    const paid = monthDebtPayments.filter((p) => p.debtId === debt.id).reduce((sum, p) => sum + p.amount, 0);
+                    const paid = monthStats.debtPaidById.get(debt.id) ?? 0;
                     const remaining = Math.max(0, debt.minimumPayment - paid);
                     return (
                       <article className="debt-card" key={debt.id}>
@@ -604,7 +624,7 @@ export default function AppV3() {
               <SectionTitle eyebrow="Kõik tegevused" title="Todo nimekiri" />
               {data.tasks.length === 0 ? <EmptyState text="Todo nimekiri on tühi." /> : (
                 <div className="list">
-                  {[...data.tasks].sort((a, b) => a.date.localeCompare(b.date)).map((task) => (
+                  {sortedTasks.map((task) => (
                     <div className={`list-row ${task.completed ? "completed" : ""}`} key={task.id}>
                       <button className="check-button" onClick={() => toggleTask(task.id)}>{task.completed ? "✓" : "○"}</button>
                       <div className="list-content"><strong>{task.title}</strong><span>{task.date}{task.linkedAmount ? ` · ${euro(task.linkedAmount)}` : ""}</span></div>
