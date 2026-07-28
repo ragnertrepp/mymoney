@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import Receivables from "./Receivables";
+
+const Receivables = lazy(() => import("./Receivables"));
 
 export default function DebtReceivablesPortal() {
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
@@ -36,7 +37,9 @@ export default function DebtReceivablesPortal() {
   return createPortal(
     <section className="receivables-section">
       <div className="section-heading"><div><p className="eyebrow">Mulle võlgu</p><h2>Kes mulle raha võlgneb</h2></div></div>
-      <Receivables />
+      <Suspense fallback={<div className="empty-state">Laadin laekumisi…</div>}>
+        <Receivables />
+      </Suspense>
     </section>,
     mountNode,
   );
