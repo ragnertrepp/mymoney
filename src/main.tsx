@@ -11,6 +11,7 @@ import "./search.css";
 import "./category-summary.css";
 import "./month-comparison.css";
 import "./category-budgets.css";
+import "./budget-forecast.css";
 import App from "./AppV4";
 
 createRoot(document.getElementById("root")!).render(
