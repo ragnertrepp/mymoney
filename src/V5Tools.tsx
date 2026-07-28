@@ -1,5 +1,6 @@
 import { useState } from "react";
 import BackupRestore from "./BackupRestore";
+import { DataIntegrityTool } from "./DataIntegrity";
 import MonthlyView from "./MonthlyView";
 import PlannedPayments from "./PlannedPayments";
 import RecurringTransactions from "./RecurringTransactions";
@@ -31,6 +32,11 @@ export default function V5Tools() {
 
             <div className="v5-tools-list">
               <section className="v5-tool-card">
+                <div><strong>Andmete kontroll</strong><span>Leia vigased summad, kuupäevad ja katkised kirjed.</span></div>
+                <DataIntegrityTool />
+              </section>
+
+              <section className="v5-tool-card">
                 <div><strong>Kuude ülevaade</strong><span>Vaata varasemaid ja tulevasi kuid.</span></div>
                 <MonthlyView />
               </section>
@@ -51,7 +57,7 @@ export default function V5Tools() {
               </section>
 
               <section className="v5-tool-card">
-                <div><strong>Varukoopia</strong><span>Taasta varem salvestatud MyMoney andmed.</span></div>
+                <div><strong>Varukoopia</strong><span>Salvesta või taasta kõik MyMoney andmed.</span></div>
                 <BackupRestore />
               </section>
             </div>
