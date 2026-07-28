@@ -44,6 +44,17 @@ function readJson<T>(key: string, fallback: T): T {
 const euro = (value: number) =>
   new Intl.NumberFormat("et-EE", { style: "currency", currency: "EUR" }).format(value);
 
+function csvCell(value: string | number) {
+  const text = String(value).replace(/"/g, '""');
+  return `"${text}"`;
+}
+
+function typeLabel(type: SearchRow["type"]) {
+  if (type === "income") return "Tulu";
+  if (type === "expense") return "Kulu";
+  return "Planeeritud makse";
+}
+
 export default function SearchFilter() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -118,6 +129,36 @@ export default function SearchFilter() {
     setMaxAmount("");
   }
 
+  function exportCsv() {
+    if (filtered.length === 0) {
+      alert("Eksportimiseks pole ühtegi kirjet.");
+      return;
+    }
+
+    const header = ["Kuupäev", "Nimetus", "Tüüp", "Kategooria", "Staatus", "Summa EUR"];
+    const lines = filtered.map((item) => [
+      item.date,
+      item.name,
+      typeLabel(item.type),
+      item.category,
+      item.status ?? "",
+      item.amount.toFixed(2),
+    ]);
+
+    const csv = [header, ...lines]
+      .map((row) => row.map((cell) => csvCell(cell)).join(";"))
+      .join("\r\n");
+
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const suffix = month || new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `mymoney-export-${suffix}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <>
       <button className="secondary-button" onClick={() => { setRevision((value) => value + 1); setOpen(true); }}>
@@ -146,7 +187,10 @@ export default function SearchFilter() {
 
             <div className="search-toolbar">
               <div><strong>{filtered.length} tulemust</strong><span>Tehingute saldo {euro(total)}</span></div>
-              <button className="secondary-button" onClick={resetFilters}>Puhasta filtrid</button>
+              <div className="search-toolbar-actions">
+                <button className="primary-button" disabled={filtered.length === 0} onClick={exportCsv}>Ekspordi CSV</button>
+                <button className="secondary-button" onClick={resetFilters}>Puhasta filtrid</button>
+              </div>
             </div>
 
             {filtered.length === 0 ? (
@@ -160,7 +204,7 @@ export default function SearchFilter() {
                       <small>{item.date} · {item.category}{item.status ? ` · ${item.status}` : ""}</small>
                     </div>
                     <div className="search-result-meta">
-                      <span>{item.type === "income" ? "Tulu" : item.type === "expense" ? "Kulu" : "Planeeritud"}</span>
+                      <span>{typeLabel(item.type)}</span>
                       <strong className={item.type === "income" ? "positive-text" : item.type === "expense" ? "negative-text" : ""}>
                         {item.type === "income" ? "+" : item.type === "expense" ? "−" : ""}{euro(item.amount)}
                       </strong>
