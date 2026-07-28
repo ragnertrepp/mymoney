@@ -3,6 +3,7 @@ import AppV3 from "./AppV3";
 import AffordabilityAdjuster from "./AffordabilityAdjuster";
 import DebtReceivablesPortal from "./DebtReceivablesPortal";
 import DeferredIntegrityGuard from "./DeferredIntegrityGuard";
+import NavigationAdjuster from "./NavigationAdjuster";
 import SafeBudgetAdjuster from "./SafeBudgetAdjuster";
 import TodayOverview from "./TodayOverview";
 import TopBackupAdjuster from "./TopBackupAdjuster";
@@ -36,6 +37,7 @@ export default function AppV4() {
       <AppV3 />
       <FirstRunGuide />
       <DebtReceivablesPortal />
+      <NavigationAdjuster />
       <DeferredIntegrityGuard />
       <SafeBudgetAdjuster />
       <AffordabilityAdjuster />
