@@ -4,11 +4,13 @@ import DataIntegrityGuard from "./DataIntegrity";
 import SafeBudgetAdjuster from "./SafeBudgetAdjuster";
 import TodayOverview from "./TodayOverview";
 import TopBackupAdjuster from "./TopBackupAdjuster";
+import UndoManagerGuard from "./UndoManager";
 import V5Tools from "./V5Tools";
 
 export default function AppV4() {
   return (
     <>
+      <UndoManagerGuard />
       <AppV3 />
       <DataIntegrityGuard />
       <SafeBudgetAdjuster />
