@@ -12,6 +12,7 @@ import "./category-summary.css";
 import "./month-comparison.css";
 import "./category-budgets.css";
 import "./budget-forecast.css";
+import "./user-guide-receivables.css";
 import App from "./AppV4";
 
 createRoot(document.getElementById("root")!).render(
