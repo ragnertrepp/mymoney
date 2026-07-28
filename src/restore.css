@@ -1,0 +1,33 @@
+.backup-restore-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 50;
+}
+
+.restore-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.restore-button {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.restore-file-input {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .backup-restore-panel {
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .restore-button {
+    padding: 8px 10px !important;
+    font-size: 12px;
+    border: 1px solid #405163;
+  }
+}
