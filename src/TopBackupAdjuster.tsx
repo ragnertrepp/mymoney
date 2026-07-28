@@ -4,6 +4,7 @@ const STORAGE_KEY = "rebuildme-mymoney-v2";
 const RECURRING_KEY = "rebuildme-mymoney-recurring-v1";
 const PLANNED_KEY = "rebuildme-mymoney-planned-v1";
 const CATEGORY_BUDGET_KEY = "rebuildme-mymoney-category-budgets-v1";
+const RECEIVABLES_KEY = "rebuildme-mymoney-receivables-v1";
 
 function readJson(key: string, fallback: unknown) {
   try {
@@ -25,6 +26,17 @@ function cleanCategoryBudgets(value: unknown) {
   );
 }
 
+function cleanReceivables(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => {
+    if (!isObject(item)) return false;
+    return typeof item.id === "string" && typeof item.name === "string" && item.name.trim() !== "" &&
+      typeof item.amount === "number" && Number.isFinite(item.amount) && item.amount > 0 &&
+      typeof item.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) &&
+      (item.status === "open" || item.status === "paid");
+  });
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -38,12 +50,13 @@ function downloadFullBackup() {
 
   const backup = {
     format: "mymoney-full-backup",
-    version: 2,
+    version: 3,
     createdAt: new Date().toISOString(),
     data,
     recurring: readJson(RECURRING_KEY, []),
     plannedPayments: readJson(PLANNED_KEY, []),
     categoryBudgets: cleanCategoryBudgets(readJson(CATEGORY_BUDGET_KEY, {})),
+    receivables: cleanReceivables(readJson(RECEIVABLES_KEY, [])),
   };
 
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -65,7 +78,7 @@ export default function TopBackupAdjuster() {
 
       button.dataset.mymoneyBackupAttached = "1";
       button.textContent = "Täielik varukoopia";
-      button.title = "Laadi alla põhiandmed, korduvad kirjed, planeeritud maksed ja kategooriaeelarved";
+      button.title = "Laadi alla põhiandmed, korduvad kirjed, planeeritud maksed, kategooriaeelarved ja mulle võlgu kirjed";
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopImmediatePropagation();
