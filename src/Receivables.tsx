@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 const RECEIVABLES_KEY = "rebuildme-mymoney-receivables-v1";
+const STORAGE_KEY = "rebuildme-mymoney-v2";
 
 type ReceivableStatus = "open" | "paid";
 
@@ -12,6 +13,20 @@ type Receivable = {
   note?: string;
   status: ReceivableStatus;
   paidDate?: string;
+  transactionId?: string;
+};
+
+type MainData = {
+  transactions?: Array<{
+    id: string;
+    name: string;
+    amount: number;
+    type: "income" | "expense";
+    date: string;
+    category: string;
+    receivableId?: string;
+  }>;
+  [key: string]: unknown;
 };
 
 const euro = (value: number) => new Intl.NumberFormat("et-FI", { style: "currency", currency: "EUR" }).format(value);
@@ -25,6 +40,17 @@ function readReceivables(): Receivable[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+function readMainData(): MainData | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as MainData : null;
+  } catch {
+    return null;
   }
 }
 
@@ -75,11 +101,58 @@ export default function Receivables() {
   }
 
   function markPaid(id: string) {
-    save(items.map((item) => item.id === id ? { ...item, status: "paid", paidDate: todayIso() } : item));
+    const receivable = items.find((item) => item.id === id);
+    if (!receivable || receivable.status !== "open") return;
+
+    const main = readMainData();
+    if (!main) {
+      alert("Põhiandmeid ei saanud avada. Laekumist ei märgitud, et vältida andmete kadumist.");
+      return;
+    }
+
+    const date = todayIso();
+    const transactionId = createId();
+    const transactions = Array.isArray(main.transactions) ? main.transactions : [];
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      ...main,
+      transactions: [
+        {
+          id: transactionId,
+          name: `Laekumine: ${receivable.name}`,
+          amount: receivable.amount,
+          type: "income",
+          date,
+          category: "Sissetulek",
+          receivableId: receivable.id,
+        },
+        ...transactions,
+      ],
+    }));
+
+    save(items.map((item) => item.id === id ? { ...item, status: "paid", paidDate: date, transactionId } : item));
+    window.location.reload();
   }
 
   function restore(id: string) {
-    save(items.map((item) => item.id === id ? { ...item, status: "open", paidDate: undefined } : item));
+    const receivable = items.find((item) => item.id === id);
+    if (!receivable) return;
+
+    if (receivable.transactionId) {
+      const main = readMainData();
+      if (!main) {
+        alert("Põhiandmeid ei saanud avada. Laekumist ei taastatud, et vältida andmete vastuolu.");
+        return;
+      }
+      const transactions = Array.isArray(main.transactions) ? main.transactions : [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        ...main,
+        transactions: transactions.filter((transaction) => transaction.id !== receivable.transactionId),
+      }));
+    }
+
+    save(items.map((item) => item.id === id ? { ...item, status: "open", paidDate: undefined, transactionId: undefined } : item));
+    window.location.reload();
   }
 
   function remove(id: string) {
@@ -140,7 +213,7 @@ export default function Receivables() {
           <div className="receivables-list">
             {paidItems.slice(0, 12).map((item) => (
               <article className="receivable-row paid" key={item.id}>
-                <div><strong>{item.name}</strong><span>Laekus {item.paidDate}</span></div>
+                <div><strong>{item.name}</strong><span>Laekus {item.paidDate} · lisatud automaatselt tuluna</span></div>
                 <div className="receivable-actions">
                   <strong>{euro(item.amount)}</strong>
                   <button className="secondary-button small" onClick={() => restore(item.id)}>Taasta ootele</button>
