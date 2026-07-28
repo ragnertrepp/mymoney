@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, type ReactNode } from "react";
 
 const BackupRestore = lazy(() => import("./BackupRestore"));
 const BudgetForecast = lazy(() => import("./BudgetForecast"));
+const BudgetSettingsTool = lazy(() => import("./BudgetSettingsTool"));
 const CategoryBudgets = lazy(() => import("./CategoryBudgets"));
 const CategorySummary = lazy(() => import("./CategorySummary"));
 const MonthlyView = lazy(() => import("./MonthlyView"));
@@ -14,7 +15,7 @@ const UserGuide = lazy(() => import("./UserGuide"));
 const DataIntegrityTool = lazy(() => import("./DataIntegrity").then((module) => ({ default: module.DataIntegrityTool })));
 const UndoManagerTool = lazy(() => import("./UndoManager").then((module) => ({ default: module.UndoManagerTool })));
 
-type ToolId = "guide" | "forecast" | "budgets" | "comparison" | "summary" | "search" | "undo" | "integrity" | "months" | "planned" | "recurring" | "editor" | "backup";
+type ToolId = "guide" | "settings" | "forecast" | "budgets" | "comparison" | "summary" | "search" | "undo" | "integrity" | "months" | "planned" | "recurring" | "editor" | "backup";
 type GroupId = "guide" | "budget" | "analysis" | "data" | "system";
 
 type ToolRowProps = {
@@ -112,7 +113,8 @@ export default function V5Tools() {
                 <ToolRow id="guide" title="README / kasutusjuhend" description="Samm-sammuline juhend" active={activeTool} onToggle={toggleTool}><UserGuide /></ToolRow>
               </ToolGroup>
 
-              <ToolGroup id="budget" icon="💰" title="Eelarve" description="Piirid, prognoos ja maksed" active={activeGroup} onToggle={toggleGroup}>
+              <ToolGroup id="budget" icon="💰" title="Eelarve" description="Seaded, piirid, prognoos ja maksed" active={activeGroup} onToggle={toggleGroup}>
+                <ToolRow id="settings" title="Eelarve seaded" description="Algjääk ja turvareserv" active={activeTool} onToggle={toggleTool}><BudgetSettingsTool /></ToolRow>
                 <ToolRow id="forecast" title="Eelarveprognoos" description="Vaata, kas kuu eelarve püsib rajal" active={activeTool} onToggle={toggleTool}><BudgetForecast /></ToolRow>
                 <ToolRow id="budgets" title="Kategooriate piirid" description="Määra kategooriate kuupiirid" active={activeTool} onToggle={toggleTool}><CategoryBudgets /></ToolRow>
                 <ToolRow id="planned" title="Planeeritud maksed" description="Jälgi arveid ja tähtaegu" active={activeTool} onToggle={toggleTool}><PlannedPayments /></ToolRow>
