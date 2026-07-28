@@ -3,6 +3,7 @@ import { useEffect } from "react";
 const STORAGE_KEY = "rebuildme-mymoney-v2";
 const RECURRING_KEY = "rebuildme-mymoney-recurring-v1";
 const PLANNED_KEY = "rebuildme-mymoney-planned-v1";
+const CATEGORY_BUDGET_KEY = "rebuildme-mymoney-category-budgets-v1";
 
 function readJson(key: string, fallback: unknown) {
   try {
@@ -11,6 +12,17 @@ function readJson(key: string, fallback: unknown) {
   } catch {
     return fallback;
   }
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function cleanCategoryBudgets(value: unknown) {
+  if (!isObject(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, limit]) => typeof limit === "number" && Number.isFinite(limit) && limit > 0),
+  );
 }
 
 function todayIso() {
@@ -26,11 +38,12 @@ function downloadFullBackup() {
 
   const backup = {
     format: "mymoney-full-backup",
-    version: 1,
+    version: 2,
     createdAt: new Date().toISOString(),
     data,
     recurring: readJson(RECURRING_KEY, []),
     plannedPayments: readJson(PLANNED_KEY, []),
+    categoryBudgets: cleanCategoryBudgets(readJson(CATEGORY_BUDGET_KEY, {})),
   };
 
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -54,13 +67,13 @@ export default function TopBackupAdjuster() {
 
     const attach = () => {
       const candidate = Array.from(document.querySelectorAll<HTMLButtonElement>(".topbar button"))
-        .find((item) => item.textContent?.trim() === "Varukoopia");
+        .find((item) => item.textContent?.trim() === "Varukoopia" || item.textContent?.trim() === "Täielik varukoopia");
 
       if (!candidate || candidate === button) return;
       button?.removeEventListener("click", handler, true);
       button = candidate;
       button.textContent = "Täielik varukoopia";
-      button.title = "Laadi alla põhiandmed, korduvad kirjed ja planeeritud maksed";
+      button.title = "Laadi alla põhiandmed, korduvad kirjed, planeeritud maksed ja kategooriaeelarved";
       button.addEventListener("click", handler, true);
     };
 
