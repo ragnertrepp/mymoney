@@ -35,7 +35,7 @@ type BudgetAlert = {
 };
 
 const euro = (value: number) =>
-  new Intl.NumberFormat("et-EE", { style: "currency", currency: "EUR" }).format(value);
+  new Intl.NumberFormat("et-FI", { style: "currency", currency: "EUR" }).format(value);
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const currentMonth = () => todayIso().slice(0, 7);
@@ -73,16 +73,21 @@ export default function TodayOverview() {
     const updateVisibility = () => {
       const active = document.querySelector(".navigation .nav-button.active");
       setVisible(active?.textContent?.trim() === "Täna");
-      setRevision((value) => value + 1);
     };
 
+    const refreshData = () => setRevision((value) => value + 1);
+    const navigation = document.querySelector(".navigation");
+    const handleNavigationClick = () => window.requestAnimationFrame(updateVisibility);
+
     updateVisibility();
-    document.addEventListener("click", updateVisibility);
-    window.addEventListener("storage", updateVisibility);
+    navigation?.addEventListener("click", handleNavigationClick);
+    window.addEventListener("mymoney-data-changed", refreshData);
+    window.addEventListener("storage", refreshData);
 
     return () => {
-      document.removeEventListener("click", updateVisibility);
-      window.removeEventListener("storage", updateVisibility);
+      navigation?.removeEventListener("click", handleNavigationClick);
+      window.removeEventListener("mymoney-data-changed", refreshData);
+      window.removeEventListener("storage", refreshData);
       node.remove();
     };
   }, []);
@@ -94,31 +99,37 @@ export default function TodayOverview() {
     const month = currentMonth();
     const transactions = Array.isArray(data.transactions) ? data.transactions : [];
 
-    const monthTransactions = transactions.filter((item) => item.date?.slice(0, 7) === month);
-    const income = monthTransactions
-      .filter((item) => item.type === "income")
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const expenses = monthTransactions
-      .filter((item) => item.type === "expense")
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    let income = 0;
+    let expenses = 0;
+    const categorySpending = new Map<string, number>();
+
+    for (const item of transactions) {
+      if (item.date?.slice(0, 7) !== month) continue;
+      const amount = Number(item.amount || 0);
+      if (item.type === "income") {
+        income += amount;
+      } else if (item.type === "expense") {
+        expenses += amount;
+        const category = item.category?.trim() || "Muu";
+        categorySpending.set(category, (categorySpending.get(category) ?? 0) + amount);
+      }
+    }
 
     const unpaid = planned
       .filter((item) => item.status === "planned")
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    const late = unpaid.filter((item) => item.dueDate < todayIso());
-    const nextSevenDays = unpaid.filter((item) => {
-      const days = daysUntil(item.dueDate);
-      return days >= 0 && days <= 7;
-    });
-    const upcomingTotal = nextSevenDays.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const late: PlannedPayment[] = [];
+    const nextSevenDays: PlannedPayment[] = [];
+    let upcomingTotal = 0;
 
-    const categorySpending = new Map<string, number>();
-    monthTransactions
-      .filter((item) => item.type === "expense")
-      .forEach((item) => {
-        const category = item.category?.trim() || "Muu";
-        categorySpending.set(category, (categorySpending.get(category) ?? 0) + Number(item.amount || 0));
-      });
+    for (const item of unpaid) {
+      if (item.dueDate < todayIso()) late.push(item);
+      const days = daysUntil(item.dueDate);
+      if (days >= 0 && days <= 7) {
+        nextSevenDays.push(item);
+        upcomingTotal += Number(item.amount || 0);
+      }
+    }
 
     const budgetAlerts: BudgetAlert[] = Object.entries(categoryBudgets)
       .map(([category, limit]) => {
