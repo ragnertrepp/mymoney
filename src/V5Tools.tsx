@@ -10,6 +10,7 @@ const PlannedPayments = lazy(() => import("./PlannedPayments"));
 const RecurringTransactions = lazy(() => import("./RecurringTransactions"));
 const SearchFilter = lazy(() => import("./SearchFilter"));
 const TransactionEditor = lazy(() => import("./TransactionEditor"));
+const UserGuide = lazy(() => import("./UserGuide"));
 const DataIntegrityTool = lazy(() => import("./DataIntegrity").then((module) => ({ default: module.DataIntegrityTool })));
 const UndoManagerTool = lazy(() => import("./UndoManager").then((module) => ({ default: module.UndoManagerTool })));
 
@@ -43,6 +44,11 @@ export default function V5Tools() {
 
             <Suspense fallback={<LoadingTool />}>
               <div className="v5-tools-list">
+                <section className="v5-tool-card">
+                  <div><strong>README / kasutusjuhend</strong><span>Vaata samm-sammult, kuidas MyMoney õigesti täita ja igapäevaselt kasutada.</span></div>
+                  <UserGuide />
+                </section>
+
                 <section className="v5-tool-card">
                   <div><strong>Eelarveprognoos</strong><span>Vaata kulutempo põhjal, millised kategooriad võivad kuu lõpuks piiri ületada.</span></div>
                   <BudgetForecast />
