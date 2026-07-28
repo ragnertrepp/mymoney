@@ -33,6 +33,7 @@
   }
 
   .topbar .secondary-button {
+    width: auto;
     padding: 8px 10px;
     font-size: 12px;
   }
@@ -128,7 +129,6 @@
     width: 100%;
   }
 
-  .topbar .secondary-button,
   .button-row .primary-button,
   .button-row .danger-link {
     width: auto;
