@@ -5,6 +5,7 @@ import MonthlyView from "./MonthlyView";
 import PlannedPayments from "./PlannedPayments";
 import RecurringTransactions from "./RecurringTransactions";
 import TransactionEditor from "./TransactionEditor";
+import { UndoManagerTool } from "./UndoManager";
 
 export default function V5Tools() {
   const [open, setOpen] = useState(false);
@@ -31,6 +32,11 @@ export default function V5Tools() {
             </p>
 
             <div className="v5-tools-list">
+              <section className="v5-tool-card">
+                <div><strong>Võta tagasi</strong><span>Taasta viimane tulu-, kulu-, makse- või püsikirje muudatus.</span></div>
+                <UndoManagerTool />
+              </section>
+
               <section className="v5-tool-card">
                 <div><strong>Andmete kontroll</strong><span>Leia vigased summad, kuupäevad ja katkised kirjed.</span></div>
                 <DataIntegrityTool />
