@@ -5,6 +5,13 @@ const STORAGE_KEY = "rebuildme-mymoney-v2";
 
 type ReceivableStatus = "open" | "paid";
 
+type ReceivablePayment = {
+  id: string;
+  amount: number;
+  date: string;
+  transactionId: string;
+};
+
 type Receivable = {
   id: string;
   name: string;
@@ -14,6 +21,7 @@ type Receivable = {
   status: ReceivableStatus;
   paidDate?: string;
   transactionId?: string;
+  payments?: ReceivablePayment[];
 };
 
 type MainData = {
@@ -54,6 +62,22 @@ function readMainData(): MainData | null {
   }
 }
 
+function legacyPayments(item: Receivable): ReceivablePayment[] {
+  if (Array.isArray(item.payments)) return item.payments;
+  if (item.status === "paid" && item.transactionId) {
+    return [{ id: item.transactionId, amount: item.amount, date: item.paidDate ?? todayIso(), transactionId: item.transactionId }];
+  }
+  return [];
+}
+
+function paidTotal(item: Receivable) {
+  return legacyPayments(item).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+}
+
+function remainingTotal(item: Receivable) {
+  return Math.max(0, item.amount - paidTotal(item));
+}
+
 export default function Receivables() {
   const [items, setItems] = useState<Receivable[]>(() => readReceivables());
   const [name, setName] = useState("");
@@ -62,14 +86,14 @@ export default function Receivables() {
   const [note, setNote] = useState("");
 
   const openItems = useMemo(
-    () => items.filter((item) => item.status === "open").sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+    () => items.filter((item) => remainingTotal(item) > 0).sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
     [items],
   );
   const paidItems = useMemo(
-    () => items.filter((item) => item.status === "paid").sort((a, b) => (b.paidDate ?? "").localeCompare(a.paidDate ?? "")),
+    () => items.filter((item) => remainingTotal(item) <= 0).sort((a, b) => (b.paidDate ?? "").localeCompare(a.paidDate ?? "")),
     [items],
   );
-  const totalOpen = openItems.reduce((sum, item) => sum + item.amount, 0);
+  const totalOpen = openItems.reduce((sum, item) => sum + remainingTotal(item), 0);
   const overdue = openItems.filter((item) => item.dueDate < todayIso());
 
   function save(next: Receivable[]) {
@@ -91,6 +115,7 @@ export default function Receivables() {
         dueDate,
         note: note.trim() || undefined,
         status: "open",
+        payments: [],
       },
       ...items,
     ]);
@@ -100,10 +125,26 @@ export default function Receivables() {
     setNote("");
   }
 
-  function markPaid(id: string) {
+  function registerPayment(id: string) {
     const receivable = items.find((item) => item.id === id);
-    if (!receivable || receivable.status !== "open") return;
+    if (!receivable) return;
 
+    const remaining = remainingTotal(receivable);
+    if (remaining <= 0) return;
+
+    const answer = window.prompt(
+      `Kui palju ${receivable.name} maksis?\nJääk: ${euro(remaining)}`,
+      String(remaining.toFixed(2)),
+    );
+    if (answer === null) return;
+
+    const requested = Number(answer.replace(",", "."));
+    if (!Number.isFinite(requested) || requested <= 0) {
+      alert("Sisesta korrektne laekunud summa.");
+      return;
+    }
+
+    const received = Math.min(requested, remaining);
     const main = readMainData();
     if (!main) {
       alert("Põhiandmeid ei saanud avada. Laekumist ei märgitud, et vältida andmete kadumist.");
@@ -112,7 +153,12 @@ export default function Receivables() {
 
     const date = todayIso();
     const transactionId = createId();
+    const paymentId = createId();
     const transactions = Array.isArray(main.transactions) ? main.transactions : [];
+    const payments = legacyPayments(receivable);
+    const nextPayments = [...payments, { id: paymentId, amount: received, date, transactionId }];
+    const nextPaidTotal = nextPayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const fullyPaid = nextPaidTotal >= receivable.amount - 0.005;
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       ...main,
@@ -120,7 +166,7 @@ export default function Receivables() {
         {
           id: transactionId,
           name: `Laekumine: ${receivable.name}`,
-          amount: receivable.amount,
+          amount: received,
           type: "income",
           date,
           category: "Sissetulek",
@@ -130,7 +176,13 @@ export default function Receivables() {
       ],
     }));
 
-    save(items.map((item) => item.id === id ? { ...item, status: "paid", paidDate: date, transactionId } : item));
+    save(items.map((item) => item.id === id ? {
+      ...item,
+      payments: nextPayments,
+      transactionId: undefined,
+      status: fullyPaid ? "paid" : "open",
+      paidDate: fullyPaid ? date : undefined,
+    } : item));
     window.location.reload();
   }
 
@@ -138,7 +190,10 @@ export default function Receivables() {
     const receivable = items.find((item) => item.id === id);
     if (!receivable) return;
 
-    if (receivable.transactionId) {
+    const paymentTransactions = new Set(legacyPayments(receivable).map((payment) => payment.transactionId));
+    if (receivable.transactionId) paymentTransactions.add(receivable.transactionId);
+
+    if (paymentTransactions.size > 0) {
       const main = readMainData();
       if (!main) {
         alert("Põhiandmeid ei saanud avada. Laekumist ei taastatud, et vältida andmete vastuolu.");
@@ -147,11 +202,17 @@ export default function Receivables() {
       const transactions = Array.isArray(main.transactions) ? main.transactions : [];
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         ...main,
-        transactions: transactions.filter((transaction) => transaction.id !== receivable.transactionId),
+        transactions: transactions.filter((transaction) => !paymentTransactions.has(transaction.id)),
       }));
     }
 
-    save(items.map((item) => item.id === id ? { ...item, status: "open", paidDate: undefined, transactionId: undefined } : item));
+    save(items.map((item) => item.id === id ? {
+      ...item,
+      status: "open",
+      paidDate: undefined,
+      transactionId: undefined,
+      payments: [],
+    } : item));
     window.location.reload();
   }
 
@@ -189,15 +250,19 @@ export default function Receivables() {
           <div className="receivables-list">
             {openItems.map((item) => {
               const isLate = item.dueDate < todayIso();
+              const paid = paidTotal(item);
+              const remaining = remainingTotal(item);
               return (
                 <article className={`receivable-row ${isLate ? "late" : ""}`} key={item.id}>
                   <div>
                     <strong>{item.name}</strong>
                     <span>{isLate ? "Hilinenud · " : "Tähtaeg · "}{item.dueDate}{item.note ? ` · ${item.note}` : ""}</span>
+                    {paid > 0 && <span>Laekunud {euro(paid)} · veel {euro(remaining)}</span>}
                   </div>
                   <div className="receivable-actions">
-                    <strong>{euro(item.amount)}</strong>
-                    <button className="primary-button small" onClick={() => markPaid(item.id)}>Märgi laekunuks</button>
+                    <strong>{euro(remaining)} / {euro(item.amount)}</strong>
+                    <button className="primary-button small" onClick={() => registerPayment(item.id)}>{paid > 0 ? "Lisa laekumine" : "Märgi laekumine"}</button>
+                    {paid > 0 && <button className="secondary-button small" onClick={() => restore(item.id)}>Tühista laekumised</button>}
                     <button className="danger-link" onClick={() => remove(item.id)}>Kustuta</button>
                   </div>
                 </article>
@@ -213,7 +278,7 @@ export default function Receivables() {
           <div className="receivables-list">
             {paidItems.slice(0, 12).map((item) => (
               <article className="receivable-row paid" key={item.id}>
-                <div><strong>{item.name}</strong><span>Laekus {item.paidDate} · lisatud automaatselt tuluna</span></div>
+                <div><strong>{item.name}</strong><span>Laekus täielikult {item.paidDate} · {legacyPayments(item).length} laekumist · lisatud automaatselt tuluna</span></div>
                 <div className="receivable-actions">
                   <strong>{euro(item.amount)}</strong>
                   <button className="secondary-button small" onClick={() => restore(item.id)}>Taasta ootele</button>
