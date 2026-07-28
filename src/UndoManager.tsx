@@ -38,6 +38,10 @@ function writeHistory(history: UndoEntry[]) {
   window.dispatchEvent(new CustomEvent("mymoney-undo-updated"));
 }
 
+function emitDataChange(key: string) {
+  window.dispatchEvent(new CustomEvent("mymoney-data-changed", { detail: { key } }));
+}
+
 export default function UndoManagerGuard() {
   useEffect(() => {
     const originalSetItem = localStorage.setItem.bind(localStorage);
@@ -45,7 +49,8 @@ export default function UndoManagerGuard() {
     let restoring = false;
 
     localStorage.setItem = (key: string, value: string) => {
-      if (!restoring && TRACKED_KEYS.includes(key)) {
+      const tracked = TRACKED_KEYS.includes(key);
+      if (!restoring && tracked) {
         const previousValue = localStorage.getItem(key);
         if (previousValue !== value) {
           const history = readHistory();
@@ -55,10 +60,12 @@ export default function UndoManagerGuard() {
         }
       }
       originalSetItem(key, value);
+      if (tracked) emitDataChange(key);
     };
 
     localStorage.removeItem = (key: string) => {
-      if (!restoring && TRACKED_KEYS.includes(key)) {
+      const tracked = TRACKED_KEYS.includes(key);
+      if (!restoring && tracked) {
         const previousValue = localStorage.getItem(key);
         if (previousValue !== null) {
           const history = readHistory();
@@ -68,6 +75,7 @@ export default function UndoManagerGuard() {
         }
       }
       originalRemoveItem(key);
+      if (tracked) emitDataChange(key);
     };
 
     const restore = (entry: UndoEntry) => {
@@ -75,6 +83,7 @@ export default function UndoManagerGuard() {
       if (entry.previousValue === null) originalRemoveItem(entry.key);
       else originalSetItem(entry.key, entry.previousValue);
       restoring = false;
+      emitDataChange(entry.key);
     };
 
     (window as Window & { __mymoneyUndoRestore?: (entry: UndoEntry) => void }).__mymoneyUndoRestore = restore;
