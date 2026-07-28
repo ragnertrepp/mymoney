@@ -1,0 +1,158 @@
+.today-overview-mount {
+  display: contents;
+}
+
+.today-overview {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #2f4050;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #14202a, #101820);
+}
+
+.today-overview.has-alert {
+  border-color: #9a5555;
+}
+
+.today-overview-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.today-overview-heading h2 {
+  margin: 0;
+  color: #f5f7fa;
+  font-size: 20px;
+}
+
+.today-status-pill {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.today-status-pill.good {
+  color: #06110d;
+  background: #77d9b0;
+}
+
+.today-status-pill.danger {
+  color: #210808;
+  background: #ff9898;
+}
+
+.today-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.today-overview-grid article {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #2b3948;
+  border-radius: 12px;
+  background: #0d151d;
+}
+
+.today-overview-grid span,
+.today-overview-grid small,
+.today-alert-row span {
+  color: #94a2b1;
+}
+
+.today-overview-grid span {
+  font-size: 12px;
+}
+
+.today-overview-grid strong {
+  color: #f5f7fa;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.today-overview-grid small {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.today-alert-list {
+  display: grid;
+  gap: 8px;
+}
+
+.today-alert-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid #7c4747;
+  border-radius: 11px;
+  background: #211314;
+}
+
+.today-alert-row > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.today-alert-row strong {
+  color: #f5f7fa;
+}
+
+.today-alert-row span {
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .today-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .today-overview {
+    gap: 11px;
+    padding: 13px;
+    border-radius: 14px;
+  }
+
+  .today-overview-heading h2 {
+    font-size: 18px;
+  }
+
+  .today-status-pill {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .today-overview-grid article {
+    padding: 10px;
+  }
+
+  .today-alert-row {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 370px) {
+  .today-overview-heading {
+    display: grid;
+  }
+
+  .today-status-pill {
+    justify-self: start;
+  }
+
+  .today-alert-row {
+    grid-template-columns: 1fr;
+  }
+}
