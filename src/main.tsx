@@ -4,6 +4,7 @@ import "./index.css";
 import "./mobile.css";
 import "./polish.css";
 import "./v4.css";
+import "./recurring.css";
 import App from "./AppV4";
 
 createRoot(document.getElementById("root")!).render(
