@@ -32,10 +32,22 @@ function randomBytes(length: number) {
   return value;
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 async function derivePinBytes(pin: string, salt: Uint8Array, iterations: number) {
-  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(pin), "PBKDF2", false, ["deriveBits"]);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    toArrayBuffer(encoder.encode(pin)),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    { name: "PBKDF2", hash: "SHA-256", salt: toArrayBuffer(salt), iterations },
     keyMaterial,
     256,
   );
@@ -43,9 +55,15 @@ async function derivePinBytes(pin: string, salt: Uint8Array, iterations: number)
 }
 
 async function deriveAesKey(pin: string, salt: Uint8Array, iterations: number) {
-  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(pin), "PBKDF2", false, ["deriveKey"]);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    toArrayBuffer(encoder.encode(pin)),
+    "PBKDF2",
+    false,
+    ["deriveKey"],
+  );
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    { name: "PBKDF2", hash: "SHA-256", salt: toArrayBuffer(salt), iterations },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
@@ -104,7 +122,12 @@ export async function encryptBackupJson(value: unknown, pin: string) {
   const iv = randomBytes(12);
   const key = await deriveAesKey(pin, salt, BACKUP_ITERATIONS);
   const plaintext = encoder.encode(JSON.stringify(value));
-  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: toArrayBuffer(iv) },
+    key,
+    toArrayBuffer(plaintext),
+  );
+  const ciphertext = new Uint8Array(encrypted);
 
   const headerLength = BACKUP_MAGIC.length + 1 + 4 + 1 + 1;
   const output = new Uint8Array(headerLength + salt.length + iv.length + ciphertext.length);
@@ -118,7 +141,7 @@ export async function encryptBackupJson(value: unknown, pin: string) {
   output.set(iv, offset); offset += iv.length;
   output.set(ciphertext, offset);
 
-  return new Blob([output], { type: "application/octet-stream" });
+  return new Blob([toArrayBuffer(output)], { type: "application/octet-stream" });
 }
 
 export async function decryptBackupFile(file: File, pin: string) {
@@ -144,7 +167,11 @@ export async function decryptBackupFile(file: File, pin: string) {
   const key = await deriveAesKey(pin, salt, iterations);
 
   try {
-    const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+    const plaintext = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: toArrayBuffer(iv) },
+      key,
+      toArrayBuffer(ciphertext),
+    );
     return JSON.parse(decoder.decode(plaintext)) as unknown;
   } catch {
     throw new Error("WRONG_PIN_OR_CORRUPT_BACKUP");
