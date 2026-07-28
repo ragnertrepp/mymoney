@@ -1,0 +1,132 @@
+.month-comparison-panel {
+  width: min(820px, 100%);
+  max-height: min(900px, calc(100vh - 32px));
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid #344353;
+  border-radius: 18px;
+  background: #111922;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+}
+
+.month-switcher small {
+  color: #94a2b1;
+  text-transform: capitalize;
+}
+
+.comparison-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.comparison-summary-grid article {
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid #2b3948;
+  border-radius: 13px;
+  background: #101820;
+}
+
+.comparison-summary-grid span,
+.comparison-summary-grid small {
+  color: #94a2b1;
+}
+
+.comparison-summary-grid strong {
+  color: #f5f7fa;
+  font-size: 18px;
+}
+
+.comparison-list {
+  display: grid;
+  gap: 12px;
+}
+
+.comparison-row {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #2b3948;
+  border-radius: 14px;
+  background: #101820;
+}
+
+.comparison-row-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comparison-row-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.comparison-row-heading small,
+.comparison-bars span {
+  color: #94a2b1;
+}
+
+.comparison-bars {
+  display: grid;
+  gap: 9px;
+}
+
+.comparison-bars > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 150px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.comparison-bars strong {
+  color: #f5f7fa;
+  white-space: nowrap;
+}
+
+.comparison-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #263341;
+}
+
+.comparison-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: #77d9b0;
+}
+
+.comparison-fill.previous {
+  opacity: 0.45;
+}
+
+@media (max-width: 600px) {
+  .month-comparison-panel {
+    width: 100%;
+    max-height: 90vh;
+    padding: 14px;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .comparison-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-bars > div {
+    grid-template-columns: 1fr auto;
+  }
+
+  .comparison-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
