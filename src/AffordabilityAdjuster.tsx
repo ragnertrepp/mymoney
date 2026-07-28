@@ -43,12 +43,16 @@ function safeToSpend() {
     .filter((item) => item.type === "expense")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-  const debtRemaining = debts.reduce((sum, debt) => {
-    const paid = payments
-      .filter((payment) => payment.debtId === debt.id && payment.date?.slice(0, 7) === month)
-      .reduce((total, payment) => total + Number(payment.amount || 0), 0);
-    return sum + Math.max(0, Number(debt.minimumPayment || 0) - paid);
-  }, 0);
+  const paidByDebt = new Map<string, number>();
+  for (const payment of payments) {
+    if (payment.date?.slice(0, 7) !== month) continue;
+    paidByDebt.set(payment.debtId, (paidByDebt.get(payment.debtId) ?? 0) + Number(payment.amount || 0));
+  }
+
+  const debtRemaining = debts.reduce(
+    (sum, debt) => sum + Math.max(0, Number(debt.minimumPayment || 0) - (paidByDebt.get(debt.id) ?? 0)),
+    0,
+  );
 
   const plannedRemaining = (Array.isArray(planned) ? planned : [])
     .filter((item) => item.status === "planned" && item.dueDate?.slice(0, 7) === month)
@@ -113,35 +117,35 @@ export default function AffordabilityAdjuster() {
     let currentInput: HTMLInputElement | null = null;
     let currentCard: HTMLElement | null = null;
 
-    const update = () => {
-      const found = findPurchaseInput();
-      if (!found?.input) return;
-
-      if (currentInput !== found.input) {
-        currentInput?.removeEventListener("input", handleInput);
-        currentInput = found.input;
-        currentCard = found.card;
-        currentInput.addEventListener("input", handleInput);
-      }
-
-      applyResult(found.card, Number(found.input.value));
-    };
-
     const handleInput = () => {
       if (currentInput && currentCard) applyResult(currentCard, Number(currentInput.value));
     };
 
-    update();
-    const observer = new MutationObserver(() => window.requestAnimationFrame(update));
-    observer.observe(document.body, { childList: true, subtree: true });
-    document.addEventListener("click", update);
-    window.addEventListener("storage", update);
+    const bind = () => {
+      const found = findPurchaseInput();
+      if (!found?.input) return;
+      if (currentInput === found.input) {
+        applyResult(found.card, Number(found.input.value));
+        return;
+      }
+
+      currentInput?.removeEventListener("input", handleInput);
+      currentInput = found.input;
+      currentCard = found.card;
+      currentInput.addEventListener("input", handleInput);
+      applyResult(found.card, Number(found.input.value));
+    };
+
+    bind();
+    window.addEventListener("mymoney-data-changed", bind);
+    window.addEventListener("storage", bind);
+    document.addEventListener("click", bind);
 
     return () => {
       currentInput?.removeEventListener("input", handleInput);
-      observer.disconnect();
-      document.removeEventListener("click", update);
-      window.removeEventListener("storage", update);
+      window.removeEventListener("mymoney-data-changed", bind);
+      window.removeEventListener("storage", bind);
+      document.removeEventListener("click", bind);
     };
   }, []);
 
