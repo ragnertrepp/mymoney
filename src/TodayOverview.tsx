@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 
 const STORAGE_KEY = "rebuildme-mymoney-v2";
 const PLANNED_KEY = "rebuildme-mymoney-planned-v1";
+const CATEGORY_BUDGET_KEY = "rebuildme-mymoney-category-budgets-v1";
 
 type Transaction = {
   id: string;
@@ -10,6 +11,7 @@ type Transaction = {
   amount: number;
   type: "income" | "expense";
   date: string;
+  category?: string;
 };
 
 type PlannedPayment = {
@@ -22,6 +24,14 @@ type PlannedPayment = {
 
 type AppData = {
   transactions?: Transaction[];
+};
+
+type BudgetAlert = {
+  category: string;
+  limit: number;
+  spent: number;
+  percent: number;
+  level: "warning" | "danger";
 };
 
 const euro = (value: number) =>
@@ -80,6 +90,7 @@ export default function TodayOverview() {
   const summary = useMemo(() => {
     const data = readJson<AppData>(STORAGE_KEY, {});
     const planned = readJson<PlannedPayment[]>(PLANNED_KEY, []);
+    const categoryBudgets = readJson<Record<string, number>>(CATEGORY_BUDGET_KEY, {});
     const month = currentMonth();
     const transactions = Array.isArray(data.transactions) ? data.transactions : [];
 
@@ -101,6 +112,32 @@ export default function TodayOverview() {
     });
     const upcomingTotal = nextSevenDays.reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
+    const categorySpending = new Map<string, number>();
+    monthTransactions
+      .filter((item) => item.type === "expense")
+      .forEach((item) => {
+        const category = item.category?.trim() || "Muu";
+        categorySpending.set(category, (categorySpending.get(category) ?? 0) + Number(item.amount || 0));
+      });
+
+    const budgetAlerts: BudgetAlert[] = Object.entries(categoryBudgets)
+      .map(([category, limit]) => {
+        const spent = categorySpending.get(category) ?? 0;
+        const percent = limit > 0 ? (spent / limit) * 100 : 0;
+        return {
+          category,
+          limit,
+          spent,
+          percent,
+          level: percent >= 100 ? "danger" : "warning",
+        } as BudgetAlert;
+      })
+      .filter((item) => item.percent >= 80)
+      .sort((a, b) => b.percent - a.percent);
+
+    const hasCriticalAlert = late.length > 0 || budgetAlerts.some((item) => item.level === "danger");
+    const attentionCount = late.length + budgetAlerts.length;
+
     return {
       income,
       expenses,
@@ -109,20 +146,27 @@ export default function TodayOverview() {
       nextSevenDays,
       upcomingTotal,
       nextPayment: unpaid[0],
+      budgetAlerts,
+      hasCriticalAlert,
+      attentionCount,
     };
   }, [revision]);
 
   if (!mountNode || !visible) return null;
 
   return createPortal(
-    <section className={`today-overview ${summary.late.length > 0 ? "has-alert" : ""}`}>
+    <section className={`today-overview ${summary.attentionCount > 0 ? "has-alert" : ""}`}>
       <div className="today-overview-heading">
         <div>
           <p className="eyebrow">Oluline täna</p>
-          <h2>{summary.late.length > 0 ? `${summary.late.length} hilinenud makset` : "Maksed on kontrolli all"}</h2>
+          <h2>
+            {summary.attentionCount > 0
+              ? `${summary.attentionCount} asja vajab tähelepanu`
+              : "Maksed ja eelarved on kontrolli all"}
+          </h2>
         </div>
-        <span className={`today-status-pill ${summary.late.length > 0 ? "danger" : "good"}`}>
-          {summary.late.length > 0 ? "Vajab tähelepanu" : "Korras"}
+        <span className={`today-status-pill ${summary.hasCriticalAlert ? "danger" : summary.attentionCount > 0 ? "warning" : "good"}`}>
+          {summary.hasCriticalAlert ? "Vajab tähelepanu" : summary.attentionCount > 0 ? "Piiri lähedal" : "Korras"}
         </span>
       </div>
 
@@ -138,6 +182,11 @@ export default function TodayOverview() {
           <small>{summary.nextSevenDays.length} planeeritud makset</small>
         </article>
         <article>
+          <span>Eelarvehoiatused</span>
+          <strong>{summary.budgetAlerts.length}</strong>
+          <small>{summary.budgetAlerts.filter((item) => item.level === "danger").length} kategooriat üle piiri</small>
+        </article>
+        <article>
           <span>Järgmine tähtaeg</span>
           <strong>{summary.nextPayment ? summary.nextPayment.name : "Puudub"}</strong>
           <small>{summary.nextPayment ? `${summary.nextPayment.dueDate} · ${euro(summary.nextPayment.amount)}` : "Ühtegi tasumata makset pole"}</small>
@@ -151,6 +200,25 @@ export default function TodayOverview() {
               <div><strong>{item.name}</strong><span>Tähtaeg {item.dueDate}</span></div>
               <strong>{euro(item.amount)}</strong>
             </div>
+          ))}
+        </div>
+      )}
+
+      {summary.budgetAlerts.length > 0 && (
+        <div className="today-budget-alerts">
+          {summary.budgetAlerts.slice(0, 4).map((item) => (
+            <article className={`today-budget-alert ${item.level}`} key={item.category}>
+              <div className="today-budget-alert-heading">
+                <div>
+                  <strong>{item.category}</strong>
+                  <span>{item.level === "danger" ? `Üle piiri ${euro(item.spent - item.limit)}` : `Kasutatud ${item.percent.toFixed(0)}%`}</span>
+                </div>
+                <strong>{euro(item.spent)} / {euro(item.limit)}</strong>
+              </div>
+              <div className="today-budget-track">
+                <div style={{ width: `${Math.min(100, item.percent)}%` }} />
+              </div>
+            </article>
           ))}
         </div>
       )}
