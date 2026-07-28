@@ -2,7 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+const base = "/mymoney/";
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -15,22 +18,22 @@ export default defineConfig({
         theme_color: "#0b1016",
         background_color: "#0b1016",
         display: "standalone",
-        start_url: "/",
-        scope: "/",
+        start_url: base,
+        scope: base,
         lang: "et",
         icons: [
           {
-            src: "/pwa-192x192.png",
+            src: `${base}pwa-192x192.png`,
             sizes: "192x192",
             type: "image/png"
           },
           {
-            src: "/pwa-512x512.png",
+            src: `${base}pwa-512x512.png`,
             sizes: "512x512",
             type: "image/png"
           },
           {
-            src: "/pwa-maskable-512x512.png",
+            src: `${base}pwa-maskable-512x512.png`,
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable"
@@ -38,7 +41,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        navigateFallback: "/index.html",
+        navigateFallback: `${base}index.html`,
         globPatterns: ["**/*.{js,css,html,ico,png,svg}"]
       },
       devOptions: {
