@@ -1,4 +1,5 @@
 import { useRef, type ChangeEvent } from "react";
+import { decryptBackupFile, encryptBackupJson, verifyPin } from "./Security";
 
 const STORAGE_KEY = "rebuildme-mymoney-v2";
 const RECURRING_KEY = "rebuildme-mymoney-recurring-v1";
@@ -102,7 +103,14 @@ function todayIso() {
 export default function BackupRestore() {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function exportFullBackup() {
+  async function exportFullBackup() {
+    const pin = prompt("Sisesta MyMoney PIN varukoopia krüpteerimiseks:");
+    if (pin === null) return;
+    if (!(await verifyPin(pin))) {
+      alert("Vale PIN-kood. Varukoopiat ei loodud.");
+      return;
+    }
+
     const data = readJson(STORAGE_KEY, null);
     if (!validateMainData(data)) {
       alert("MyMoney põhiandmeid ei leitud või need on vigased.");
@@ -111,7 +119,7 @@ export default function BackupRestore() {
 
     const backup = {
       format: "mymoney-full-backup",
-      version: 3,
+      version: 4,
       createdAt: new Date().toISOString(),
       data,
       recurring: readJson(RECURRING_KEY, []),
@@ -120,11 +128,11 @@ export default function BackupRestore() {
       receivables: cleanReceivables(readJson(RECEIVABLES_KEY, [])),
     };
 
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const blob = await encryptBackupJson(backup, pin);
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `mymoney-full-backup-${todayIso()}.json`;
+    link.download = `mymoney-full-backup-${todayIso()}.mymoney`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -134,9 +142,20 @@ export default function BackupRestore() {
     if (!file) return;
 
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      const backup = parseBackup(parsed);
+      let parsed: unknown;
+      if (file.name.toLowerCase().endsWith(".mymoney")) {
+        const pin = prompt("Sisesta selle varukoopia PIN-kood:");
+        if (pin === null) return;
+        parsed = await decryptBackupFile(file, pin);
+      } else {
+        const acceptedLegacy = window.confirm(
+          "See on vana krüpteerimata JSON-varukoopia. Kas soovid selle ühekordselt importida? Uued varukoopiad salvestatakse ainult krüpteeritult.",
+        );
+        if (!acceptedLegacy) return;
+        parsed = JSON.parse(await file.text());
+      }
 
+      const backup = parseBackup(parsed);
       if (!backup) {
         alert("See ei ole sobiv MyMoney varukoopia.");
         return;
@@ -146,11 +165,9 @@ export default function BackupRestore() {
       const accepted = window.confirm(
         `Taastada varukoopia?\n\nTulud ja kulud: ${data.transactions?.length ?? 0}\nVõlad: ${data.debts?.length ?? 0}\nTodo: ${data.tasks?.length ?? 0}\nKorduvad kirjed: ${backup.recurring.length}\nPlaneeritud maksed: ${backup.plannedPayments.length}\nKategooriaeelarved: ${Object.keys(backup.categoryBudgets).length}\nMulle võlgu: ${backup.receivables.length}\n\nPraegused andmed asendatakse.`,
       );
-
       if (!accepted) return;
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(backup.data));
-
       if (backup.isFullBackup) {
         localStorage.setItem(RECURRING_KEY, JSON.stringify(backup.recurring));
         localStorage.setItem(PLANNED_KEY, JSON.stringify(backup.plannedPayments));
@@ -158,14 +175,15 @@ export default function BackupRestore() {
         localStorage.setItem(RECEIVABLES_KEY, JSON.stringify(backup.receivables));
       }
 
-      alert(
-        backup.isFullBackup
-          ? "Täielik varukoopia taastatud. MyMoney avaneb nüüd uuesti."
-          : "Vana tüüpi varukoopia taastatud. Lisatööriistade andmeid see fail ei sisaldanud.",
-      );
+      alert("Varukoopia taastatud. MyMoney avaneb nüüd uuesti ja küsib PIN-koodi.");
       window.location.reload();
-    } catch {
-      alert("Varukoopia faili ei saanud avada.");
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "";
+      if (message === "WRONG_PIN_OR_CORRUPT_BACKUP") {
+        alert("Vale PIN-kood või varukoopia on kahjustatud.");
+      } else {
+        alert("Varukoopia faili ei saanud avada.");
+      }
     } finally {
       event.target.value = "";
     }
@@ -173,8 +191,8 @@ export default function BackupRestore() {
 
   return (
     <div className="restore-tools full-backup-tools">
-      <button className="primary-button" onClick={exportFullBackup}>
-        Laadi täielik varukoopia
+      <button className="primary-button" onClick={() => void exportFullBackup()}>
+        Laadi krüpteeritud varukoopia
       </button>
       <button className="secondary-button restore-button" onClick={() => inputRef.current?.click()}>
         Taasta varukoopia
@@ -183,9 +201,10 @@ export default function BackupRestore() {
         ref={inputRef}
         className="restore-file-input"
         type="file"
-        accept="application/json,.json"
+        accept=".mymoney,application/octet-stream,application/json,.json"
         onChange={restore}
       />
+      <small>Uued varukoopiad on AES-256-GCM krüpteeritud ja neid saab avada ainult õige PIN-koodiga.</small>
     </div>
   );
 }
