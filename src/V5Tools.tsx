@@ -4,6 +4,7 @@ import { DataIntegrityTool } from "./DataIntegrity";
 import MonthlyView from "./MonthlyView";
 import PlannedPayments from "./PlannedPayments";
 import RecurringTransactions from "./RecurringTransactions";
+import SearchFilter from "./SearchFilter";
 import TransactionEditor from "./TransactionEditor";
 import { UndoManagerTool } from "./UndoManager";
 
@@ -32,6 +33,11 @@ export default function V5Tools() {
             </p>
 
             <div className="v5-tools-list">
+              <section className="v5-tool-card">
+                <div><strong>Otsing ja filtrid</strong><span>Leia kirjeid nime, kategooria, kuu, tüübi või summa järgi.</span></div>
+                <SearchFilter />
+              </section>
+
               <section className="v5-tool-card">
                 <div><strong>Võta tagasi</strong><span>Taasta viimane tulu-, kulu-, makse- või püsikirje muudatus.</span></div>
                 <UndoManagerTool />
