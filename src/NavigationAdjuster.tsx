@@ -13,17 +13,24 @@ function findSectionByText(text: string) {
 }
 
 export default function NavigationAdjuster() {
-  const [main, setMain] = useState<HTMLElement | null>(null);
+  const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
   const [debtView, setDebtView] = useState<DebtView>("overview");
   const [isDebts, setIsDebts] = useState(false);
 
   useEffect(() => {
     const mainNode = document.querySelector("main");
-    if (mainNode instanceof HTMLElement) setMain(mainNode);
+    if (!(mainNode instanceof HTMLElement)) return;
+
+    const mount = document.createElement("div");
+    mount.className = "debt-subnav-mount";
+    mainNode.insertBefore(mount, mainNode.firstChild);
+    setMountNode(mount);
 
     const update = () => {
       const tab = activeMainTab();
-      setIsDebts(tab === "Võlad");
+      const debtsActive = tab === "Võlad";
+      setIsDebts(debtsActive);
+      mount.style.display = debtsActive ? "block" : "none";
 
       const budgetNav = document.querySelector<HTMLElement>("main .sub-navigation[aria-label='Eelarve vaated']");
       if (budgetNav) {
@@ -42,7 +49,10 @@ export default function NavigationAdjuster() {
 
     update();
     navigation?.addEventListener("click", handleNavigation);
-    return () => navigation?.removeEventListener("click", handleNavigation);
+    return () => {
+      navigation?.removeEventListener("click", handleNavigation);
+      mount.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -65,7 +75,7 @@ export default function NavigationAdjuster() {
     return () => window.cancelAnimationFrame(id);
   }, [isDebts, debtView]);
 
-  if (!main || !isDebts) return null;
+  if (!mountNode || !isDebts) return null;
 
   return createPortal(
     <nav className="sub-navigation debt-sub-navigation" aria-label="Võlgade vaated">
@@ -73,6 +83,6 @@ export default function NavigationAdjuster() {
       <button className={debtView === "mine" ? "active" : ""} onClick={() => setDebtView("mine")}>Minu võlad</button>
       <button className={debtView === "receivables" ? "active" : ""} onClick={() => setDebtView("receivables")}>Mulle võlgu</button>
     </nav>,
-    main,
+    mountNode,
   );
 }
