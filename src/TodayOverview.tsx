@@ -178,15 +178,24 @@ export default function TodayOverview() {
       }));
 
     const unpaidDebts: UpcomingPayment[] = debts.flatMap((debt) => {
+      if (!debt.dueDate) return [];
+
+      const balance = Math.max(0, Number(debt.balance || 0));
+      const minimumPayment = Math.max(0, Number(debt.minimumPayment || 0));
       const paidThisMonth = debtPayments
         .filter((payment) => payment.debtId === debt.id && payment.date?.slice(0, 7) === month)
         .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-      const remaining = Math.max(0, Math.min(Number(debt.balance || 0), Number(debt.minimumPayment || 0) - paidThisMonth));
-      if (remaining <= 0 || !debt.dueDate) return [];
+
+      const amountDue = minimumPayment > 0
+        ? Math.max(0, Math.min(balance, minimumPayment - paidThisMonth))
+        : balance;
+
+      if (amountDue <= 0) return [];
+
       return [{
         id: `debt-${debt.id}`,
         name: debt.name,
-        amount: remaining,
+        amount: amountDue,
         dueDate: debt.dueDate,
         source: "debt" as const,
       }];
