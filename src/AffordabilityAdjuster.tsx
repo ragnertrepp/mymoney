@@ -14,9 +14,17 @@ type AppData = {
   settings?: { startingBalance?: number; monthlyReserve?: number };
 };
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+function localIsoDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const todayIso = () => localIsoDate();
 const euro = (value: number) =>
-  new Intl.NumberFormat("et-EE", { style: "currency", currency: "EUR" }).format(value);
+  new Intl.NumberFormat("et-FI", { style: "currency", currency: "EUR" }).format(value);
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -69,6 +77,12 @@ function safeToSpend() {
 }
 
 function findPurchaseInput() {
+  const preferredCard = document.querySelector<HTMLElement>(".budget-control-card");
+  if (preferredCard) {
+    const input = preferredCard.querySelector<HTMLInputElement>('input[type="number"]');
+    if (input) return { card: preferredCard, input };
+  }
+
   const headings = Array.from(document.querySelectorAll<HTMLElement>(".section-heading h2"));
   const heading = headings.find((item) => item.textContent?.trim() === "Kas saan lubada?");
   const card = heading?.closest<HTMLElement>(".card");
