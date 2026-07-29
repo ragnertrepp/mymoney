@@ -11,9 +11,10 @@ function activeMainTab() {
 }
 
 function hideTodayControl() {
-  const headings = Array.from(document.querySelectorAll<HTMLElement>(".section-heading h2"));
-  const heading = headings.find((item) => item.textContent?.trim() === "Kas saan lubada?");
-  const card = heading?.closest<HTMLElement>(".card");
+  const cards = Array.from(document.querySelectorAll<HTMLElement>("main .two-column > .card"));
+  const card = cards.find((item) =>
+    item.querySelector<HTMLElement>(".section-heading h2")?.textContent?.trim() === "Kas saan lubada?",
+  );
   if (!card) return;
 
   const parent = card.parentElement;
@@ -52,12 +53,6 @@ export default function BudgetControlAdjuster() {
       }
 
       setMounts({ nav: navMount, content: contentMount });
-
-      Array.from(budgetNav.querySelectorAll<HTMLButtonElement>("button")).forEach((button) => {
-        if (button.textContent?.trim() !== "Kontroll") {
-          button.onclick = () => setControlActive(false);
-        }
-      });
     };
 
     const update = () => {
@@ -70,14 +65,21 @@ export default function BudgetControlAdjuster() {
 
     const navigation = document.querySelector(".navigation");
     const handleNavigation = () => window.requestAnimationFrame(update);
+    const handleDocumentClick = (event: MouseEvent) => {
+      hideTodayControl();
+      const target = event.target;
+      if (!(target instanceof HTMLButtonElement)) return;
+      if (!target.closest("main .sub-navigation[aria-label='Eelarve vaated']")) return;
+      if (target.textContent?.trim() !== "Kontroll") setControlActive(false);
+    };
 
     update();
     navigation?.addEventListener("click", handleNavigation);
-    document.addEventListener("click", hideTodayControl);
+    document.addEventListener("click", handleDocumentClick);
 
     return () => {
       navigation?.removeEventListener("click", handleNavigation);
-      document.removeEventListener("click", hideTodayControl);
+      document.removeEventListener("click", handleDocumentClick);
       navMount?.remove();
       contentMount.remove();
     };
