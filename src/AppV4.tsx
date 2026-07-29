@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import AppV3 from "./AppV3";
 import AffordabilityAdjuster from "./AffordabilityAdjuster";
+import BudgetControlAdjuster from "./BudgetControlAdjuster";
 import DebtReceivablesPortal from "./DebtReceivablesPortal";
 import DeferredIntegrityGuard from "./DeferredIntegrityGuard";
 import NavigationAdjuster from "./NavigationAdjuster";
@@ -39,6 +40,7 @@ export default function AppV4() {
       <FirstRunGuide />
       <DebtReceivablesPortal />
       <NavigationAdjuster />
+      <BudgetControlAdjuster />
       <DeferredIntegrityGuard />
       <SafeBudgetAdjuster />
       <AffordabilityAdjuster />
