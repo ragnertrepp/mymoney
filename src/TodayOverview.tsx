@@ -15,12 +15,35 @@ type Transaction = {
   category?: string;
 };
 
+type Debt = {
+  id: string;
+  name: string;
+  balance: number;
+  minimumPayment: number;
+  dueDate: string;
+};
+
+type DebtPayment = {
+  id: string;
+  debtId: string;
+  amount: number;
+  date: string;
+};
+
 type PlannedPayment = {
   id: string;
   name: string;
   amount: number;
   dueDate: string;
   status: "planned" | "paid" | "cancelled";
+};
+
+type UpcomingPayment = {
+  id: string;
+  name: string;
+  amount: number;
+  dueDate: string;
+  source: "planned" | "debt";
 };
 
 type Receivable = {
@@ -34,6 +57,8 @@ type Receivable = {
 
 type AppData = {
   transactions?: Transaction[];
+  debts?: Debt[];
+  debtPayments?: DebtPayment[];
 };
 
 type BudgetAlert = {
@@ -47,7 +72,14 @@ type BudgetAlert = {
 const euro = (value: number) =>
   new Intl.NumberFormat("et-FI", { style: "currency", currency: "EUR" }).format(value);
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+function localIsoDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const todayIso = () => localIsoDate();
 const currentMonth = () => todayIso().slice(0, 7);
 
 function readJson<T>(key: string, fallback: T): T {
@@ -61,9 +93,11 @@ function readJson<T>(key: string, fallback: T): T {
 }
 
 function daysUntil(date: string) {
-  const start = new Date(`${todayIso()}T00:00:00`);
-  const end = new Date(`${date}T00:00:00`);
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  const [startYear, startMonth, startDay] = todayIso().split("-").map(Number);
+  const [endYear, endMonth, endDay] = date.split("-").map(Number);
+  const start = Date.UTC(startYear, startMonth - 1, startDay);
+  const end = Date.UTC(endYear, endMonth - 1, endDay);
+  return Math.round((end - start) / 86_400_000);
 }
 
 export default function TodayOverview() {
@@ -87,7 +121,12 @@ export default function TodayOverview() {
 
     const refreshData = () => setRevision((value) => value + 1);
     const navigation = document.querySelector(".navigation");
-    const handleNavigationClick = () => window.requestAnimationFrame(updateVisibility);
+    const handleNavigationClick = () => {
+      window.requestAnimationFrame(() => {
+        updateVisibility();
+        refreshData();
+      });
+    };
 
     updateVisibility();
     navigation?.addEventListener("click", handleNavigationClick);
@@ -109,6 +148,8 @@ export default function TodayOverview() {
     const receivables = readJson<Receivable[]>(RECEIVABLES_KEY, []);
     const month = currentMonth();
     const transactions = Array.isArray(data.transactions) ? data.transactions : [];
+    const debts = Array.isArray(data.debts) ? data.debts : [];
+    const debtPayments = Array.isArray(data.debtPayments) ? data.debtPayments : [];
 
     let income = 0;
     let expenses = 0;
@@ -126,26 +167,51 @@ export default function TodayOverview() {
       }
     }
 
-    const unpaid = planned
+    const unpaidPlanned: UpcomingPayment[] = planned
       .filter((item) => item.status === "planned")
+      .map((item) => ({
+        id: `planned-${item.id}`,
+        name: item.name,
+        amount: Number(item.amount || 0),
+        dueDate: item.dueDate,
+        source: "planned" as const,
+      }));
+
+    const unpaidDebts: UpcomingPayment[] = debts.flatMap((debt) => {
+      const paidThisMonth = debtPayments
+        .filter((payment) => payment.debtId === debt.id && payment.date?.slice(0, 7) === month)
+        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+      const remaining = Math.max(0, Math.min(Number(debt.balance || 0), Number(debt.minimumPayment || 0) - paidThisMonth));
+      if (remaining <= 0 || !debt.dueDate) return [];
+      return [{
+        id: `debt-${debt.id}`,
+        name: debt.name,
+        amount: remaining,
+        dueDate: debt.dueDate,
+        source: "debt" as const,
+      }];
+    });
+
+    const unpaid = [...unpaidPlanned, ...unpaidDebts]
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    const late: PlannedPayment[] = [];
-    const nextSevenDays: PlannedPayment[] = [];
+
+    const late: UpcomingPayment[] = [];
+    const nextSevenDays: UpcomingPayment[] = [];
     let upcomingTotal = 0;
 
     for (const item of unpaid) {
-      if (item.dueDate < todayIso()) late.push(item);
       const days = daysUntil(item.dueDate);
+      if (days < 0) late.push(item);
       if (days >= 0 && days <= 7) {
         nextSevenDays.push(item);
-        upcomingTotal += Number(item.amount || 0);
+        upcomingTotal += item.amount;
       }
     }
 
     const openReceivables = (Array.isArray(receivables) ? receivables : [])
       .filter((item) => item.status === "open")
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    const overdueReceivables = openReceivables.filter((item) => item.dueDate < todayIso());
+    const overdueReceivables = openReceivables.filter((item) => daysUntil(item.dueDate) < 0);
     const incomingSevenDays = openReceivables.filter((item) => {
       const days = daysUntil(item.dueDate);
       return days >= 0 && days <= 7;
@@ -216,7 +282,7 @@ export default function TodayOverview() {
         <article>
           <span>Järgmise 7 päeva maksed</span>
           <strong>{euro(summary.upcomingTotal)}</strong>
-          <small>{summary.nextSevenDays.length} planeeritud makset</small>
+          <small>{summary.nextSevenDays.length} makset, sh võlad</small>
         </article>
         <article>
           <span>Järgmise 7 päeva laekumised</span>
@@ -231,7 +297,7 @@ export default function TodayOverview() {
         <article>
           <span>Järgmine väljaminek</span>
           <strong>{summary.nextPayment ? summary.nextPayment.name : "Puudub"}</strong>
-          <small>{summary.nextPayment ? `${summary.nextPayment.dueDate} · ${euro(summary.nextPayment.amount)}` : "Ühtegi tasumata makset pole"}</small>
+          <small>{summary.nextPayment ? `${summary.nextPayment.dueDate} · ${euro(summary.nextPayment.amount)}${summary.nextPayment.source === "debt" ? " · võlg" : ""}` : "Ühtegi tasumata makset pole"}</small>
         </article>
         <article>
           <span>Järgmine laekumine</span>
@@ -244,7 +310,7 @@ export default function TodayOverview() {
         <div className="today-alert-list">
           {summary.late.slice(0, 3).map((item) => (
             <div className="today-alert-row" key={item.id}>
-              <div><strong>{item.name}</strong><span>Makse hilinenud · tähtaeg {item.dueDate}</span></div>
+              <div><strong>{item.name}</strong><span>{item.source === "debt" ? "Võlamakse hilinenud" : "Makse hilinenud"} · tähtaeg {item.dueDate}</span></div>
               <strong>{euro(item.amount)}</strong>
             </div>
           ))}
