@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { createPin, hasPin, isValidPinFormat, verifyPin } from "./Security";
+import { initializeSecureStorage } from "./SecureStorage";
 import "./SecurityGate.css";
 
 type Props = { children: ReactNode };
@@ -19,6 +20,12 @@ export default function SecurityGate({ children }: Props) {
     setReady(true);
   }, []);
 
+  async function unlockStorage(value: string) {
+    await initializeSecureStorage(value);
+    setUnlocked(true);
+    setPin("");
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
@@ -26,22 +33,21 @@ export default function SecurityGate({ children }: Props) {
 
     if (!configured) {
       if (!isValidPinFormat(pin)) {
-        setError("PIN peab olema 6–12 numbrit.");
+        setError("PIN must contain 6–12 digits.");
         return;
       }
       if (pin !== confirmPin) {
-        setError("PIN-koodid ei ühti.");
+        setError("PIN codes do not match.");
         return;
       }
       setBusy(true);
       try {
         await createPin(pin);
+        await unlockStorage(pin);
         setConfigured(true);
-        setUnlocked(true);
-        setPin("");
         setConfirmPin("");
       } catch (reason) {
-        setError(reason instanceof Error ? reason.message : "PIN-i salvestamine ebaõnnestus.");
+        setError(reason instanceof Error ? reason.message : "Could not secure MyMoney data.");
       } finally {
         setBusy(false);
       }
@@ -49,15 +55,19 @@ export default function SecurityGate({ children }: Props) {
     }
 
     setBusy(true);
-    const valid = await verifyPin(pin);
-    setBusy(false);
-    if (!valid) {
-      setPin("");
-      setError("Vale PIN-kood.");
-      return;
+    try {
+      const valid = await verifyPin(pin);
+      if (!valid) {
+        setPin("");
+        setError("Incorrect PIN.");
+        return;
+      }
+      await unlockStorage(pin);
+    } catch {
+      setError("Encrypted data could not be opened. Check your PIN and stored data.");
+    } finally {
+      setBusy(false);
     }
-    setUnlocked(true);
-    setPin("");
   }
 
   if (!ready) return null;
@@ -66,47 +76,28 @@ export default function SecurityGate({ children }: Props) {
   return (
     <main className="security-gate">
       <section className="security-card" aria-labelledby="security-title">
-        <p className="eyebrow">MyMoney turvalukk</p>
-        <h1 id="security-title">{configured ? "Sisesta PIN" : "Loo MyMoney PIN"}</h1>
+        <p className="eyebrow">MyMoney security</p>
+        <h1 id="security-title">{configured ? "Enter PIN" : "Create MyMoney PIN"}</h1>
         <p>
           {configured
-            ? "MyMoney sisu on lukustatud. Sisesta oma PIN-kood."
-            : "PIN-koodi küsitakse rakenduse avamisel ning sama PIN krüpteerib sinu uued varukoopiad."}
+            ? "MyMoney is locked. Enter your PIN to decrypt your data."
+            : "Your PIN protects MyMoney and encrypts local data and backups."}
         </p>
         <form onSubmit={submit} className="security-form">
           <label>
-            PIN-kood
-            <input
-              autoFocus
-              inputMode="numeric"
-              autoComplete={configured ? "current-password" : "new-password"}
-              pattern="[0-9]*"
-              type="password"
-              value={pin}
-              onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 12))}
-              placeholder="6–12 numbrit"
-            />
+            PIN
+            <input autoFocus inputMode="numeric" autoComplete={configured ? "current-password" : "new-password"} pattern="[0-9]*" type="password" value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="6–12 digits" />
           </label>
           {!configured && (
             <label>
-              PIN uuesti
-              <input
-                inputMode="numeric"
-                autoComplete="new-password"
-                pattern="[0-9]*"
-                type="password"
-                value={confirmPin}
-                onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 12))}
-                placeholder="Korda PIN-koodi"
-              />
+              Repeat PIN
+              <input inputMode="numeric" autoComplete="new-password" pattern="[0-9]*" type="password" value={confirmPin} onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="Repeat PIN" />
             </label>
           )}
           {error && <div className="security-error" role="alert">{error}</div>}
-          <button className="primary-button" type="submit" disabled={busy}>
-            {busy ? "Kontrollin…" : configured ? "Ava MyMoney" : "Salvesta PIN ja ava"}
-          </button>
+          <button className="primary-button" type="submit" disabled={busy}>{busy ? "Opening…" : configured ? "Open MyMoney" : "Save PIN and open"}</button>
         </form>
-        <small>PIN-i ennast ei salvestata loetaval kujul. Kui PIN ununeb, ei saa krüpteeritud varukoopiat avada.</small>
+        <small>The PIN itself is not stored in readable form. If you forget it, encrypted data cannot be recovered.</small>
       </section>
     </main>
   );
