@@ -5,6 +5,7 @@ import BudgetControlAdjuster from "./BudgetControlAdjuster";
 import DebtReceivablesPortal from "./DebtReceivablesPortal";
 import DeferredIntegrityGuard from "./DeferredIntegrityGuard";
 import NavigationAdjuster from "./NavigationAdjuster";
+import QuickAdd from "./QuickAdd";
 import SafeBudgetAdjuster from "./SafeBudgetAdjuster";
 import SecurityGate from "./SecurityGate";
 import TodayOverview from "./TodayOverview";
@@ -47,6 +48,7 @@ export default function AppV4() {
       <TodayOverview />
       <TopBackupAdjuster />
       <V5Tools />
+      <QuickAdd />
     </SecurityGate>
   );
 }
