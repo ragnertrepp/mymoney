@@ -4,8 +4,11 @@ import AffordabilityAdjuster from "./AffordabilityAdjuster";
 import BudgetControlAdjuster from "./BudgetControlAdjuster";
 import DebtReceivablesPortal from "./DebtReceivablesPortal";
 import DeferredIntegrityGuard from "./DeferredIntegrityGuard";
+import MainNavigation from "./MainNavigation";
 import NavigationAdjuster from "./NavigationAdjuster";
+import NotesPage from "./NotesPage";
 import QuickAdd from "./QuickAdd";
+import ReminderNotifications from "./ReminderNotifications";
 import SafeBudgetAdjuster from "./SafeBudgetAdjuster";
 import SecurityGate from "./SecurityGate";
 import TodayOverview from "./TodayOverview";
@@ -23,14 +26,8 @@ function FirstRunGuide() {
   } catch {
     shouldShow = false;
   }
-
   if (!shouldShow) return null;
-
-  return (
-    <Suspense fallback={null}>
-      <UserGuide mode="first-run" />
-    </Suspense>
-  );
+  return <Suspense fallback={null}><UserGuide mode="first-run" /></Suspense>;
 }
 
 export default function AppV4() {
@@ -38,6 +35,7 @@ export default function AppV4() {
     <SecurityGate>
       <UndoManagerGuard />
       <AppV3 />
+      <MainNavigation />
       <FirstRunGuide />
       <DebtReceivablesPortal />
       <NavigationAdjuster />
@@ -47,8 +45,10 @@ export default function AppV4() {
       <AffordabilityAdjuster />
       <TodayOverview />
       <TopBackupAdjuster />
-      <V5Tools />
+      <NotesPage />
+      <ReminderNotifications />
       <QuickAdd />
+      <V5Tools />
     </SecurityGate>
   );
 }
