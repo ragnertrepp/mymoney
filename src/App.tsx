@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import "./App.css";
 
 type TransactionType = "income" | "expense";
-type Tab = "today" | "budget" | "debts" | "tasks" | "calendar";
+type Tab = "today" | "budget" | "debts" | "calendar";
 
 type Transaction = {
   id: string;
@@ -68,9 +68,7 @@ const initialData: AppData = {
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const currentMonthKey = () => todayIso().slice(0, 7);
 const monthKey = (date: string) => date.slice(0, 7);
-
-const createId = () =>
-  `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 const euro = (value: number) =>
   new Intl.NumberFormat("et-EE", {
@@ -78,17 +76,20 @@ const euro = (value: number) =>
     currency: "EUR",
   }).format(value);
 
+const parseNumber = (value: string | number) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const normalized = value.trim().replace(/\s/g, "").replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 function normalizeData(value: unknown): AppData {
   const candidate = value as Partial<AppData> | null;
 
   return {
-    transactions: Array.isArray(candidate?.transactions)
-      ? candidate.transactions
-      : [],
+    transactions: Array.isArray(candidate?.transactions) ? candidate.transactions : [],
     debts: Array.isArray(candidate?.debts) ? candidate.debts : [],
-    debtPayments: Array.isArray(candidate?.debtPayments)
-      ? candidate.debtPayments
-      : [],
+    debtPayments: Array.isArray(candidate?.debtPayments) ? candidate.debtPayments : [],
     tasks: Array.isArray(candidate?.tasks) ? candidate.tasks : [],
     settings: {
       startingBalance:
@@ -105,7 +106,6 @@ function normalizeData(value: unknown): AppData {
 
 function App() {
   const [tab, setTab] = useState<Tab>("today");
-
   const [data, setData] = useState<AppData>(() => {
     try {
       const v2 = localStorage.getItem(STORAGE_KEY);
@@ -122,8 +122,7 @@ function App() {
 
   const [transactionName, setTransactionName] = useState("");
   const [transactionAmount, setTransactionAmount] = useState("");
-  const [transactionType, setTransactionType] =
-    useState<TransactionType>("expense");
+  const [transactionType, setTransactionType] = useState<TransactionType>("expense");
   const [transactionDate, setTransactionDate] = useState(todayIso());
   const [transactionCategory, setTransactionCategory] = useState("Muu");
 
@@ -134,12 +133,10 @@ function App() {
   const [debtDueDate, setDebtDueDate] = useState(todayIso());
   const [debtPriority, setDebtPriority] = useState("1");
 
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskDate, setTaskDate] = useState(todayIso());
-  const [taskAmount, setTaskAmount] = useState("");
-
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseName, setPurchaseName] = useState("");
+  const [payingDebtId, setPayingDebtId] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
 
   const currentMonth = currentMonthKey();
 
@@ -148,67 +145,38 @@ function App() {
   }, [data]);
 
   const monthTransactions = useMemo(
-    () =>
-      data.transactions.filter(
-        (transaction) => monthKey(transaction.date) === currentMonth,
-      ),
+    () => data.transactions.filter((item) => monthKey(item.date) === currentMonth),
     [data.transactions, currentMonth],
   );
 
   const monthDebtPayments = useMemo(
-    () =>
-      data.debtPayments.filter(
-        (payment) => monthKey(payment.date) === currentMonth,
-      ),
+    () => data.debtPayments.filter((item) => monthKey(item.date) === currentMonth),
     [data.debtPayments, currentMonth],
   );
 
-  const monthlyIncome = useMemo(
-    () =>
-      monthTransactions
-        .filter((item) => item.type === "income")
-        .reduce((sum, item) => sum + item.amount, 0),
-    [monthTransactions],
-  );
+  const monthlyIncome = monthTransactions
+    .filter((item) => item.type === "income")
+    .reduce((sum, item) => sum + item.amount, 0);
 
-  const monthlyExpenses = useMemo(
-    () =>
-      monthTransactions
-        .filter((item) => item.type === "expense")
-        .reduce((sum, item) => sum + item.amount, 0),
-    [monthTransactions],
-  );
+  const monthlyExpenses = monthTransactions
+    .filter((item) => item.type === "expense")
+    .reduce((sum, item) => sum + item.amount, 0);
 
-  const currentBalance =
-    data.settings.startingBalance + monthlyIncome - monthlyExpenses;
-
-  const monthlyDebtPlan = data.debts.reduce(
-    (sum, debt) => sum + debt.minimumPayment,
-    0,
-  );
-
-  const monthlyDebtPaid = monthDebtPayments.reduce(
-    (sum, payment) => sum + payment.amount,
-    0,
-  );
+  const currentBalance = data.settings.startingBalance + monthlyIncome - monthlyExpenses;
+  const monthlyDebtPlan = data.debts.reduce((sum, debt) => sum + debt.minimumPayment, 0);
+  const monthlyDebtPaid = monthDebtPayments.reduce((sum, payment) => sum + payment.amount, 0);
 
   const monthlyDebtRemaining = data.debts.reduce((sum, debt) => {
     const paid = monthDebtPayments
       .filter((payment) => payment.debtId === debt.id)
       .reduce((total, payment) => total + payment.amount, 0);
-
     return sum + Math.max(0, debt.minimumPayment - paid);
   }, 0);
 
   const safeToSpend =
-    currentBalance -
-    monthlyDebtRemaining -
-    Math.max(0, data.settings.monthlyReserve);
+    currentBalance - monthlyDebtRemaining - Math.max(0, data.settings.monthlyReserve);
 
-  const totalDebt = data.debts.reduce(
-    (sum, debt) => sum + debt.balance,
-    0,
-  );
+  const totalDebt = data.debts.reduce((sum, debt) => sum + debt.balance, 0);
 
   const remainingDays = useMemo(() => {
     const now = new Date();
@@ -227,14 +195,14 @@ function App() {
     return b.interest - a.interest;
   });
 
-  const purchaseValue = Number(purchaseAmount) || 0;
+  const purchaseValue = parseNumber(purchaseAmount);
 
   const affordability = useMemo(() => {
     if (purchaseValue <= 0) {
       return {
         status: "neutral",
         title: "Sisesta ostu hind",
-        message: "Rakendus arvutab, kas ost mahub sinu turvalisse eelarvesse.",
+        message: "Rakendus arvutab kohe, kas ost mahub sinu eelarvesse.",
       };
     }
 
@@ -252,23 +220,20 @@ function App() {
       return {
         status: "warning",
         title: "Saad lubada, aga eelarve läheb pingeliseks",
-        message: `Pärast ostu jääks ainult ${euro(afterPurchase)}.`,
+        message: `Pärast ostu jääks ${euro(afterPurchase)}.`,
       };
     }
 
     return {
       status: "danger",
       title: "Praegu ei ole mõistlik",
-      message: `Turvalisest eelarvest jääb puudu ${euro(
-        Math.abs(afterPurchase),
-      )}.`,
+      message: `Turvalisest eelarvest jääb puudu ${euro(Math.abs(afterPurchase))}.`,
     };
   }, [purchaseValue, safeToSpend, data.settings.monthlyReserve]);
 
   function addTransaction(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    const amount = Number(transactionAmount);
-
+    const amount = parseNumber(transactionAmount);
     if (!transactionName.trim() || amount <= 0) return;
 
     const transaction: Transaction = {
@@ -299,10 +264,10 @@ function App() {
   function addDebt(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const balance = Number(debtBalance);
-    const minimumPayment = Number(debtMinimum);
-    const interest = Number(debtInterest);
-    const priority = Number(debtPriority);
+    const balance = parseNumber(debtBalance);
+    const minimumPayment = parseNumber(debtMinimum);
+    const interest = parseNumber(debtInterest);
+    const priority = Math.max(1, Math.round(parseNumber(debtPriority)) || 1);
 
     if (!debtName.trim() || balance <= 0) return;
 
@@ -313,7 +278,7 @@ function App() {
       minimumPayment: Math.max(0, minimumPayment),
       interest: Math.max(0, interest),
       dueDate: debtDueDate,
-      priority: Math.max(1, priority),
+      priority,
     };
 
     setData((previous) => ({
@@ -328,17 +293,14 @@ function App() {
     setDebtPriority("1");
   }
 
+  function startDebtPayment(debt: Debt) {
+    setPayingDebtId(debt.id);
+    setPaymentAmount(debt.minimumPayment > 0 ? String(debt.minimumPayment).replace(".", ",") : "");
+  }
+
   function registerDebtPayment(debt: Debt) {
-    const text = prompt(
-      `Kui palju maksid võlale "${debt.name}"?`,
-      String(debt.minimumPayment || ""),
-    );
-
-    if (text === null) return;
-
-    const payment = Number(text.replace(",", "."));
-
-    if (!Number.isFinite(payment) || payment <= 0) return;
+    const payment = parseNumber(paymentAmount);
+    if (payment <= 0) return;
 
     const paidAmount = Math.min(payment, debt.balance);
     const paymentDate = todayIso();
@@ -373,6 +335,9 @@ function App() {
         ...previous.transactions,
       ],
     }));
+
+    setPayingDebtId(null);
+    setPaymentAmount("");
   }
 
   function deleteDebt(id: string) {
@@ -382,43 +347,12 @@ function App() {
     }));
   }
 
-  function addTask(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!taskTitle.trim()) return;
-
-    const task: Task = {
-      id: createId(),
-      title: taskTitle.trim(),
-      date: taskDate,
-      completed: false,
-      linkedAmount: Number(taskAmount) || undefined,
-    };
-
-    setData((previous) => ({
-      ...previous,
-      tasks: [...previous.tasks, task],
-    }));
-
-    setTaskTitle("");
-    setTaskAmount("");
-  }
-
   function toggleTask(id: string) {
     setData((previous) => ({
       ...previous,
       tasks: previous.tasks.map((task) =>
-        task.id === id
-          ? { ...task, completed: !task.completed }
-          : task,
+        task.id === id ? { ...task, completed: !task.completed } : task,
       ),
-    }));
-  }
-
-  function deleteTask(id: string) {
-    setData((previous) => ({
-      ...previous,
-      tasks: previous.tasks.filter((task) => task.id !== id),
     }));
   }
 
@@ -427,19 +361,15 @@ function App() {
       ...previous,
       settings: {
         ...previous.settings,
-        [field]: Number(value) || 0,
+        [field]: parseNumber(value),
       },
     }));
   }
 
   function exportBackup() {
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-
     link.href = url;
     link.download = `mymoney-backup-${todayIso()}.json`;
     link.click();
@@ -447,10 +377,7 @@ function App() {
   }
 
   function resetAll() {
-    const confirmed = window.confirm(
-      "Kas kustutada kõik MyMoney andmed? Seda ei saa tagasi võtta.",
-    );
-
+    const confirmed = window.confirm("Kas kustutada kõik MyMoney andmed? Seda ei saa tagasi võtta.");
     if (confirmed) setData(initialData);
   }
 
@@ -461,17 +388,13 @@ function App() {
           <p className="eyebrow">RebuildMe</p>
           <h1>MyMoney</h1>
         </div>
-
-        <button className="secondary-button" onClick={exportBackup}>
-          Varukoopia
-        </button>
+        <button className="secondary-button" onClick={exportBackup}>Varukoopia</button>
       </header>
 
-      <nav className="navigation">
+      <nav className="navigation" aria-label="Põhimenüü">
         <NavButton label="Täna" active={tab === "today"} onClick={() => setTab("today")} />
         <NavButton label="Eelarve" active={tab === "budget"} onClick={() => setTab("budget")} />
         <NavButton label="Võlad" active={tab === "debts"} onClick={() => setTab("debts")} />
-        <NavButton label="Todo" active={tab === "tasks"} onClick={() => setTab("tasks")} />
         <NavButton label="Kalender" active={tab === "calendar"} onClick={() => setTab("calendar")} />
       </nav>
 
@@ -480,7 +403,7 @@ function App() {
           <>
             <section className="summary-grid">
               <SummaryCard label="Praegune saldo" value={euro(currentBalance)} detail="Algjääk + tulud − kulud" />
-              <SummaryCard label="Turvaliselt kasutada" value={euro(Math.max(0, safeToSpend))} detail="Pärast reservi ja maksmata võlamakseid" />
+              <SummaryCard label="Turvaliselt kasutada" value={euro(Math.max(0, safeToSpend))} detail="Pärast reservi ja võlamakseid" />
               <SummaryCard label="Päevane eelarve" value={euro(dailyBudget)} detail={`${remainingDays} päeva kuu lõpuni`} />
               <SummaryCard label="Võlgu kokku" value={euro(totalDebt)} detail={`${data.debts.length} aktiivset võlga`} />
             </section>
@@ -490,9 +413,7 @@ function App() {
                 <p className="eyebrow">Selle kuu võlaplaan</p>
                 <h2>{euro(monthlyDebtPaid)} / {euro(monthlyDebtPlan)} makstud</h2>
               </div>
-              <ProgressBar
-                value={monthlyDebtPlan > 0 ? monthlyDebtPaid / monthlyDebtPlan : 0}
-              />
+              <ProgressBar value={monthlyDebtPlan > 0 ? monthlyDebtPaid / monthlyDebtPlan : 0} />
               <span>Veel maksta: {euro(monthlyDebtRemaining)}</span>
             </section>
 
@@ -515,17 +436,12 @@ function App() {
                     />
                   </label>
 
-                  <label>
-                    Hind
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={purchaseAmount}
-                      onChange={(event) => setPurchaseAmount(event.target.value)}
-                      placeholder="0.00"
-                    />
-                  </label>
+                  <MoneyInput
+                    label="Hind"
+                    value={purchaseAmount}
+                    onChange={setPurchaseAmount}
+                    placeholder="0,00"
+                  />
                 </div>
 
                 <div className={`affordability ${affordability.status}`}>
@@ -538,12 +454,12 @@ function App() {
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Järgmised tegevused</p>
-                    <h2>Todo</h2>
+                    <h2>Tulemas</h2>
                   </div>
                 </div>
 
                 {upcomingTasks.length === 0 ? (
-                  <EmptyState text="Ühtegi aktiivset ülesannet pole." />
+                  <EmptyState text="Ühtegi aktiivset tegevust pole." />
                 ) : (
                   <div className="list">
                     {upcomingTasks.slice(0, 5).map((task) => (
@@ -575,13 +491,7 @@ function App() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Prioriteet</th>
-                        <th>Võlg</th>
-                        <th>Jääk</th>
-                        <th>Plaan</th>
-                        <th>Makstud</th>
-                        <th>Puudu</th>
-                        <th>Tähtaeg</th>
+                        <th>#</th><th>Võlg</th><th>Jääk</th><th>Plaan</th><th>Makstud</th><th>Puudu</th><th>Tähtaeg</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -590,17 +500,14 @@ function App() {
                           .filter((payment) => payment.debtId === debt.id)
                           .reduce((sum, payment) => sum + payment.amount, 0);
                         const remaining = Math.max(0, debt.minimumPayment - paid);
-
                         return (
                           <tr key={debt.id}>
-                            <td>#{debt.priority}</td>
+                            <td>{debt.priority}</td>
                             <td>{debt.name}</td>
                             <td>{euro(debt.balance)}</td>
                             <td>{euro(debt.minimumPayment)}</td>
                             <td className="positive-text">{euro(paid)}</td>
-                            <td className={remaining > 0 ? "negative-text" : "positive-text"}>
-                              {remaining > 0 ? euro(remaining) : "Makstud"}
-                            </td>
+                            <td className={remaining > 0 ? "negative-text" : "positive-text"}>{remaining > 0 ? euro(remaining) : "Makstud"}</td>
                             <td>{debt.dueDate}</td>
                           </tr>
                         );
@@ -618,62 +525,37 @@ function App() {
             <section className="summary-grid">
               <SummaryCard label="Sissetulekud" value={euro(monthlyIncome)} detail="Sellel kuul" />
               <SummaryCard label="Kulud" value={euro(monthlyExpenses)} detail="Sellel kuul" />
-              <SummaryCard label="Võlamaksed tehtud" value={euro(monthlyDebtPaid)} detail={`Plaan ${euro(monthlyDebtPlan)}`} />
-              <SummaryCard label="Prognoos" value={euro(safeToSpend)} detail="Pärast reservi ja maksmata võlamakseid" />
+              <SummaryCard label="Võlamaksed" value={euro(monthlyDebtPaid)} detail={`Plaan ${euro(monthlyDebtPlan)}`} />
+              <SummaryCard label="Vabalt kasutada" value={euro(safeToSpend)} detail="Pärast reservi ja võlamakseid" />
             </section>
 
             <section className="two-column">
               <div className="card">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">Seaded</p>
-                    <h2>Kuu algandmed</h2>
-                  </div>
-                </div>
-
+                <div className="section-heading"><div><p className="eyebrow">Seaded</p><h2>Kuu algandmed</h2></div></div>
                 <div className="form-grid">
-                  <label>
-                    Algjääk
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={data.settings.startingBalance}
-                      onChange={(event) => updateSettings("startingBalance", event.target.value)}
-                    />
-                  </label>
-
-                  <label>
-                    Turvareserv
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={data.settings.monthlyReserve}
-                      onChange={(event) => updateSettings("monthlyReserve", event.target.value)}
-                    />
-                  </label>
+                  <MoneyInput
+                    label="Algjääk"
+                    value={String(data.settings.startingBalance).replace(".", ",")}
+                    onChange={(value) => updateSettings("startingBalance", value)}
+                  />
+                  <MoneyInput
+                    label="Turvareserv"
+                    value={String(data.settings.monthlyReserve).replace(".", ",")}
+                    onChange={(value) => updateSettings("monthlyReserve", value)}
+                  />
                 </div>
               </div>
 
               <div className="card">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">Uus kirje</p>
-                    <h2>Lisa tulu või kulu</h2>
-                  </div>
-                </div>
-
+                <div className="section-heading"><div><p className="eyebrow">Uus kirje</p><h2>Lisa tulu või kulu</h2></div></div>
                 <form onSubmit={addTransaction}>
                   <div className="form-grid">
                     <label>
                       Nimetus
-                      <input required value={transactionName} onChange={(event) => setTransactionName(event.target.value)} />
+                      <input required value={transactionName} onChange={(event) => setTransactionName(event.target.value)} placeholder="Näiteks palk või toit" />
                     </label>
 
-                    <label>
-                      Summa
-                      <input required type="number" min="0.01" step="0.01" value={transactionAmount} onChange={(event) => setTransactionAmount(event.target.value)} />
-                    </label>
+                    <MoneyInput label="Summa" value={transactionAmount} onChange={setTransactionAmount} required />
 
                     <label>
                       Tüüp
@@ -686,15 +568,7 @@ function App() {
                     <label>
                       Kategooria
                       <select value={transactionCategory} onChange={(event) => setTransactionCategory(event.target.value)}>
-                        <option>Elamine</option>
-                        <option>Toit</option>
-                        <option>Transport</option>
-                        <option>Lapsed</option>
-                        <option>Võlamakse</option>
-                        <option>Tervis</option>
-                        <option>Töö</option>
-                        <option>Sissetulek</option>
-                        <option>Muu</option>
+                        <option>Elamine</option><option>Toit</option><option>Transport</option><option>Lapsed</option><option>Võlamakse</option><option>Tervis</option><option>Töö</option><option>Sissetulek</option><option>Muu</option>
                       </select>
                     </label>
 
@@ -703,48 +577,25 @@ function App() {
                       <input type="date" value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} />
                     </label>
                   </div>
-
                   <button className="primary-button" type="submit">Lisa kirje</button>
                 </form>
               </div>
             </section>
 
             <section className="card">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Ajalugu</p>
-                  <h2>Tulud ja kulud</h2>
-                </div>
-              </div>
-
+              <div className="section-heading"><div><p className="eyebrow">Ajalugu</p><h2>Tulud ja kulud</h2></div></div>
               {data.transactions.length === 0 ? (
                 <EmptyState text="Ühtegi tulu ega kulu pole veel lisatud." />
               ) : (
                 <div className="table-wrapper">
                   <table>
-                    <thead>
-                      <tr>
-                        <th>Kuupäev</th>
-                        <th>Nimetus</th>
-                        <th>Kategooria</th>
-                        <th>Tüüp</th>
-                        <th>Summa</th>
-                        <th />
-                      </tr>
-                    </thead>
+                    <thead><tr><th>Kuupäev</th><th>Nimetus</th><th>Kategooria</th><th>Tüüp</th><th>Summa</th><th /></tr></thead>
                     <tbody>
                       {data.transactions.map((item) => (
                         <tr key={item.id}>
-                          <td>{item.date}</td>
-                          <td>{item.name}</td>
-                          <td>{item.category}</td>
-                          <td>{item.type === "income" ? "Tulu" : "Kulu"}</td>
-                          <td className={item.type === "income" ? "positive-text" : "negative-text"}>
-                            {item.type === "income" ? "+" : "−"}{euro(item.amount)}
-                          </td>
-                          <td>
-                            <button className="danger-link" onClick={() => deleteTransaction(item.id)}>Kustuta</button>
-                          </td>
+                          <td>{item.date}</td><td>{item.name}</td><td>{item.category}</td><td>{item.type === "income" ? "Tulu" : "Kulu"}</td>
+                          <td className={item.type === "income" ? "positive-text" : "negative-text"}>{item.type === "income" ? "+" : "−"}{euro(item.amount)}</td>
+                          <td><button className="danger-link" onClick={() => deleteTransaction(item.id)}>Kustuta</button></td>
                         </tr>
                       ))}
                     </tbody>
@@ -760,81 +611,49 @@ function App() {
             <section className="summary-grid">
               <SummaryCard label="Võlgu kokku" value={euro(totalDebt)} detail={`${data.debts.length} aktiivset võlga`} />
               <SummaryCard label="Kuu plaan" value={euro(monthlyDebtPlan)} detail="Minimaalsed maksed" />
-              <SummaryCard label="Kuu jooksul makstud" value={euro(monthlyDebtPaid)} detail={`Veel ${euro(monthlyDebtRemaining)}`} />
-              <SummaryCard label="Kõrgeim intress" value={`${Math.max(0, ...data.debts.map((item) => item.interest))}%`} detail="Kõige kallim aktiivne võlg" />
+              <SummaryCard label="Makstud" value={euro(monthlyDebtPaid)} detail={`Veel ${euro(monthlyDebtRemaining)}`} />
+              <SummaryCard label="Kõrgeim intress" value={`${Math.max(0, ...data.debts.map((item) => item.interest))}%`} detail="Aktiivsete võlgade seas" />
             </section>
 
             <section className="card">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Uus võlg</p>
-                  <h2>Lisa võlatabelisse</h2>
-                </div>
-              </div>
-
+              <div className="section-heading"><div><p className="eyebrow">Uus võlg</p><h2>Lisa võlg</h2></div></div>
               <form onSubmit={addDebt}>
                 <div className="form-grid wide">
                   <label>
                     Võlausaldaja
                     <input required value={debtName} onChange={(event) => setDebtName(event.target.value)} />
                   </label>
-
-                  <label>
-                    Võlajääk
-                    <input required type="number" min="0.01" step="0.01" value={debtBalance} onChange={(event) => setDebtBalance(event.target.value)} />
-                  </label>
-
-                  <label>
-                    Minimaalne kuumakse
-                    <input type="number" min="0" step="0.01" value={debtMinimum} onChange={(event) => setDebtMinimum(event.target.value)} />
-                  </label>
-
-                  <label>
-                    Intress %
-                    <input type="number" min="0" step="0.01" value={debtInterest} onChange={(event) => setDebtInterest(event.target.value)} />
-                  </label>
-
+                  <MoneyInput label="Võlajääk" value={debtBalance} onChange={setDebtBalance} required />
+                  <MoneyInput label="Kuumakse" value={debtMinimum} onChange={setDebtMinimum} />
+                  <MoneyInput label="Intress %" value={debtInterest} onChange={setDebtInterest} suffix="%" />
                   <label>
                     Järgmine tähtaeg
                     <input type="date" value={debtDueDate} onChange={(event) => setDebtDueDate(event.target.value)} />
                   </label>
-
                   <label>
                     Prioriteet
-                    <input type="number" min="1" step="1" value={debtPriority} onChange={(event) => setDebtPriority(event.target.value)} />
+                    <input type="text" inputMode="numeric" pattern="[0-9]*" value={debtPriority} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setDebtPriority(event.target.value.replace(/\D/g, ""))} />
                   </label>
                 </div>
-
                 <button className="primary-button" type="submit">Lisa võlg</button>
               </form>
             </section>
 
             <section className="card">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Makseplaan</p>
-                  <h2>Võlad prioriteedi järgi</h2>
-                </div>
-              </div>
-
+              <div className="section-heading"><div><p className="eyebrow">Makseplaan</p><h2>Võlad prioriteedi järgi</h2></div></div>
               {sortedDebts.length === 0 ? (
                 <EmptyState text="Võlatabel on tühi." />
               ) : (
                 <div className="debt-list">
                   {sortedDebts.map((debt) => {
-                    const paidThisMonth = monthDebtPayments
-                      .filter((payment) => payment.debtId === debt.id)
-                      .reduce((sum, payment) => sum + payment.amount, 0);
+                    const paidThisMonth = monthDebtPayments.filter((payment) => payment.debtId === debt.id).reduce((sum, payment) => sum + payment.amount, 0);
                     const remainingThisMonth = Math.max(0, debt.minimumPayment - paidThisMonth);
                     const progress = debt.minimumPayment > 0 ? paidThisMonth / debt.minimumPayment : 0;
 
                     return (
                       <article className="debt-card" key={debt.id}>
                         <div className="debt-header">
-                          <div>
-                            <span className="priority-badge">Prioriteet {debt.priority}</span>
-                            <h3>{debt.name}</h3>
-                          </div>
+                          <div><span className="priority-badge">Prioriteet {debt.priority}</span><h3>{debt.name}</h3></div>
                           <strong>{euro(debt.balance)}</strong>
                         </div>
 
@@ -848,12 +667,20 @@ function App() {
 
                         <ProgressBar value={progress} />
 
-                        <div className="button-row">
-                          <button className="primary-button small" onClick={() => registerDebtPayment(debt)}>
-                            Märgi makse
-                          </button>
-                          <button className="danger-link" onClick={() => deleteDebt(debt.id)}>Kustuta</button>
-                        </div>
+                        {payingDebtId === debt.id ? (
+                          <div className="form-grid">
+                            <MoneyInput label="Makstud summa" value={paymentAmount} onChange={setPaymentAmount} autoFocus />
+                            <div className="button-row">
+                              <button className="primary-button small" type="button" onClick={() => registerDebtPayment(debt)}>Salvesta makse</button>
+                              <button className="secondary-button" type="button" onClick={() => { setPayingDebtId(null); setPaymentAmount(""); }}>Tühista</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="button-row">
+                            <button className="primary-button small" type="button" onClick={() => startDebtPayment(debt)}>Märgi makse</button>
+                            <button className="danger-link" type="button" onClick={() => deleteDebt(debt.id)}>Kustuta</button>
+                          </div>
+                        )}
                       </article>
                     );
                   })}
@@ -862,32 +689,16 @@ function App() {
             </section>
 
             <section className="card">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Ajalugu</p>
-                  <h2>Võlamaksed</h2>
-                </div>
-              </div>
-
+              <div className="section-heading"><div><p className="eyebrow">Ajalugu</p><h2>Võlamaksed</h2></div></div>
               {data.debtPayments.length === 0 ? (
                 <EmptyState text="Ühtegi võlamakset pole veel registreeritud." />
               ) : (
                 <div className="table-wrapper">
                   <table>
-                    <thead>
-                      <tr>
-                        <th>Kuupäev</th>
-                        <th>Võlg</th>
-                        <th>Summa</th>
-                      </tr>
-                    </thead>
+                    <thead><tr><th>Kuupäev</th><th>Võlg</th><th>Summa</th></tr></thead>
                     <tbody>
                       {data.debtPayments.map((payment) => (
-                        <tr key={payment.id}>
-                          <td>{payment.date}</td>
-                          <td>{payment.debtName}</td>
-                          <td className="negative-text">{euro(payment.amount)}</td>
-                        </tr>
+                        <tr key={payment.id}><td>{payment.date}</td><td>{payment.debtName}</td><td className="negative-text">{euro(payment.amount)}</td></tr>
                       ))}
                     </tbody>
                   </table>
@@ -897,85 +708,10 @@ function App() {
           </>
         )}
 
-        {tab === "tasks" && (
-          <>
-            <section className="card">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Uus ülesanne</p>
-                  <h2>Lisa Todo</h2>
-                </div>
-              </div>
-
-              <form onSubmit={addTask}>
-                <div className="form-grid">
-                  <label>
-                    Ülesanne
-                    <input required value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} />
-                  </label>
-
-                  <label>
-                    Kuupäev
-                    <input type="date" value={taskDate} onChange={(event) => setTaskDate(event.target.value)} />
-                  </label>
-
-                  <label>
-                    Seotud summa
-                    <input type="number" min="0" step="0.01" value={taskAmount} onChange={(event) => setTaskAmount(event.target.value)} />
-                  </label>
-                </div>
-
-                <button className="primary-button" type="submit">Lisa ülesanne</button>
-              </form>
-            </section>
-
-            <section className="card">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Kõik tegevused</p>
-                  <h2>Todo nimekiri</h2>
-                </div>
-              </div>
-
-              {data.tasks.length === 0 ? (
-                <EmptyState text="Todo nimekiri on tühi." />
-              ) : (
-                <div className="list">
-                  {[...data.tasks]
-                    .sort((a, b) => a.date.localeCompare(b.date))
-                    .map((task) => (
-                      <div className={`list-row ${task.completed ? "completed" : ""}`} key={task.id}>
-                        <button className="check-button" onClick={() => toggleTask(task.id)}>
-                          {task.completed ? "✓" : "○"}
-                        </button>
-                        <div className="list-content">
-                          <strong>{task.title}</strong>
-                          <span>{task.date}{task.linkedAmount ? ` · ${euro(task.linkedAmount)}` : ""}</span>
-                        </div>
-                        <button className="danger-link" onClick={() => deleteTask(task.id)}>Kustuta</button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </section>
-          </>
-        )}
-
         {tab === "calendar" && (
           <section className="card">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Ajajoon</p>
-                <h2>Kalender ja tähtajad</h2>
-              </div>
-            </div>
-
-            <CalendarTimeline
-              debts={data.debts}
-              debtPayments={data.debtPayments}
-              tasks={data.tasks}
-              transactions={data.transactions}
-            />
+            <div className="section-heading"><div><p className="eyebrow">Ajajoon</p><h2>Kalender ja tähtajad</h2></div></div>
+            <CalendarTimeline debts={data.debts} debtPayments={data.debtPayments} tasks={data.tasks} transactions={data.transactions} />
           </section>
         )}
 
@@ -988,116 +724,86 @@ function App() {
   );
 }
 
-function NavButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button className={`nav-button ${active ? "active" : ""}`} onClick={onClick}>
-      {label}
-    </button>
-  );
-}
-
-function SummaryCard({
+function MoneyInput({
   label,
   value,
-  detail,
+  onChange,
+  placeholder = "0,00",
+  suffix = "€",
+  required = false,
+  autoFocus = false,
 }: {
   label: string;
   value: string;
-  detail: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  suffix?: string;
+  required?: boolean;
+  autoFocus?: boolean;
 }) {
   return (
-    <article className="summary-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </article>
+    <label>
+      {label}
+      <div style={{ position: "relative" }}>
+        <input
+          required={required}
+          autoFocus={autoFocus}
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          value={value}
+          onFocus={(event) => event.currentTarget.select()}
+          onChange={(event) => {
+            const next = event.target.value.replace(/[^0-9.,\-\s]/g, "");
+            onChange(next);
+          }}
+          placeholder={placeholder}
+          style={{ paddingRight: "2.5rem" }}
+        />
+        <span
+          aria-hidden="true"
+          style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", opacity: 0.65, pointerEvents: "none" }}
+        >
+          {suffix}
+        </span>
+      </div>
+    </label>
   );
+}
+
+function NavButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return <button className={`nav-button ${active ? "active" : ""}`} onClick={onClick}>{label}</button>;
+}
+
+function SummaryCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return <article className="summary-card"><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
 }
 
 function ProgressBar({ value }: { value: number }) {
   const percentage = Math.max(0, Math.min(100, value * 100));
-
-  return (
-    <div className="progress-track" aria-label={`${Math.round(percentage)}%`}>
-      <div className="progress-fill" style={{ width: `${percentage}%` }} />
-    </div>
-  );
+  return <div className="progress-track" aria-label={`${Math.round(percentage)}%`}><div className="progress-fill" style={{ width: `${percentage}%` }} /></div>;
 }
 
 function EmptyState({ text }: { text: string }) {
   return <div className="empty-state">{text}</div>;
 }
 
-function CalendarTimeline({
-  debts,
-  debtPayments,
-  tasks,
-  transactions,
-}: {
-  debts: Debt[];
-  debtPayments: DebtPayment[];
-  tasks: Task[];
-  transactions: Transaction[];
-}) {
+function CalendarTimeline({ debts, debtPayments, tasks, transactions }: { debts: Debt[]; debtPayments: DebtPayment[]; tasks: Task[]; transactions: Transaction[] }) {
   const entries = [
-    ...debts.map((debt) => ({
-      id: `debt-${debt.id}`,
-      date: debt.dueDate,
-      title: `Võlamakse tähtaeg: ${debt.name}`,
-      description: euro(debt.minimumPayment),
-      type: "Võlg",
-    })),
-    ...debtPayments.map((payment) => ({
-      id: `payment-${payment.id}`,
-      date: payment.date,
-      title: `Makstud: ${payment.debtName}`,
-      description: euro(payment.amount),
-      type: "Makse",
-    })),
-    ...tasks.map((task) => ({
-      id: `task-${task.id}`,
-      date: task.date,
-      title: task.title,
-      description: task.linkedAmount
-        ? euro(task.linkedAmount)
-        : task.completed
-          ? "Tehtud"
-          : "Todo",
-      type: "Todo",
-    })),
-    ...transactions.map((transaction) => ({
-      id: `transaction-${transaction.id}`,
-      date: transaction.date,
-      title: transaction.name,
-      description: `${transaction.type === "income" ? "+" : "−"}${euro(transaction.amount)}`,
-      type: transaction.type === "income" ? "Tulu" : "Kulu",
-    })),
+    ...debts.map((debt) => ({ id: `debt-${debt.id}`, date: debt.dueDate, title: `Võlg: ${debt.name}`, detail: `${euro(debt.minimumPayment)} · jääk ${euro(debt.balance)}` })),
+    ...tasks.map((task) => ({ id: `task-${task.id}`, date: task.date, title: task.completed ? `✓ ${task.title}` : task.title, detail: task.linkedAmount ? euro(task.linkedAmount) : "Tegevus" })),
+    ...debtPayments.map((payment) => ({ id: `payment-${payment.id}`, date: payment.date, title: `Makstud: ${payment.debtName}`, detail: euro(payment.amount) })),
+    ...transactions.map((transaction) => ({ id: `transaction-${transaction.id}`, date: transaction.date, title: transaction.name, detail: `${transaction.type === "income" ? "+" : "−"}${euro(transaction.amount)} · ${transaction.category}` })),
   ].sort((a, b) => a.date.localeCompare(b.date));
 
-  if (entries.length === 0) {
-    return <EmptyState text="Kalendris pole veel ühtegi kirjet." />;
-  }
+  if (entries.length === 0) return <EmptyState text="Kalendris ei ole veel kirjeid." />;
 
   return (
-    <div className="timeline">
+    <div className="list">
       {entries.map((entry) => (
-        <article className="timeline-row" key={entry.id}>
-          <div className="timeline-date">{entry.date}</div>
-          <div className="timeline-marker" />
-          <div className="timeline-content">
-            <span className="timeline-type">{entry.type}</span>
-            <strong>{entry.title}</strong>
-            <small>{entry.description}</small>
-          </div>
-        </article>
+        <div className="list-row" key={entry.id}>
+          <div className="list-content"><strong>{entry.title}</strong><span>{entry.date} · {entry.detail}</span></div>
+        </div>
       ))}
     </div>
   );
