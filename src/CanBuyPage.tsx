@@ -1,0 +1,15 @@
+import { useEffect, useMemo, useState } from "react";
+
+const DATA_KEY="rebuildme-mymoney-v2";
+const PLANNED_KEY="rebuildme-mymoney-planned-v1";
+const parse=(v:string)=>Number(v.trim().replace(/\s/g,"").replace(",","."))||0;
+const euro=(n:number)=>new Intl.NumberFormat("en-FI",{style:"currency",currency:"EUR"}).format(n);
+function read(key:string,fallback:any){try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback))}catch{return fallback}}
+
+export default function CanBuyPage(){
+ const [visible,setVisible]=useState(false),[amount,setAmount]=useState(""),[revision,setRevision]=useState(0);
+ useEffect(()=>{const h=(e:Event)=>{const next=Boolean((e as CustomEvent).detail);setVisible(next);document.body.classList.toggle("canbuy-mode",next)};const r=()=>setRevision(x=>x+1);window.addEventListener("mymoney-canbuy-mode",h);window.addEventListener("mymoney-data-changed",r);return()=>{window.removeEventListener("mymoney-canbuy-mode",h);window.removeEventListener("mymoney-data-changed",r);document.body.classList.remove("canbuy-mode")}},[]);
+ const safe=useMemo(()=>{void revision;const d=read(DATA_KEY,{}),transactions=Array.isArray(d.transactions)?d.transactions:[],debts=Array.isArray(d.debts)?d.debts:[],payments=Array.isArray(d.debtPayments)?d.debtPayments:[],month=new Date().toISOString().slice(0,7);const income=transactions.filter((x:any)=>x.type==="income"&&x.date?.startsWith(month)).reduce((s:number,x:any)=>s+Number(x.amount||0),0);const expenses=transactions.filter((x:any)=>x.type==="expense"&&x.date?.startsWith(month)).reduce((s:number,x:any)=>s+Number(x.amount||0),0);const balance=Number(d.settings?.startingBalance||0)+income-expenses;const debtRemaining=debts.reduce((s:number,x:any)=>{const paid=payments.filter((p:any)=>p.debtId===x.id&&p.date?.startsWith(month)).reduce((a:number,p:any)=>a+Number(p.amount||0),0);return s+Math.max(0,Number(x.minimumPayment||0)-paid)},0);const planned=read(PLANNED_KEY,[]);const plannedOpen=Array.isArray(planned)?planned.filter((x:any)=>x.status==="planned"&&x.dueDate?.startsWith(month)).reduce((s:number,x:any)=>s+Number(x.amount||0),0):0;return balance-debtRemaining-plannedOpen-Math.max(0,Number(d.settings?.monthlyReserve||0))},[revision]);
+ if(!visible)return null;const value=parse(amount),after=safe-value,status=value<=0?"neutral":after>=0?"good":"danger";
+ return <section className="standalone-page canbuy-page"><div className="card"><p className="eyebrow">Can I buy it?</p><h2>Enter only the purchase price</h2><label>Price<div className="quick-money"><input autoFocus inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value.replace(/[^0-9.,\s-]/g,""))} placeholder="0,00"/><span>€</span></div></label><div className={`affordability ${status}`}><strong>{value<=0?"Enter a price":after>=0?"YES":"NO"}</strong><span>{value<=0?`Safe to spend now: ${euro(Math.max(0,safe))}`:after>=0?`After purchase: ${euro(after)}.`:`Over safe budget by ${euro(Math.abs(after))}.`}</span></div></div></section>
+}
