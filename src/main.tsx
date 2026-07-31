@@ -7,6 +7,7 @@ import "./v4.css";
 import "./recurring.css";
 import "./v5.css";
 import "./simple-ui.css";
+import "./secure-ui.css";
 import "./today-overview.css";
 import "./search.css";
 import "./category-summary.css";
