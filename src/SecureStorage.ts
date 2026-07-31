@@ -16,8 +16,13 @@ const nativeKey = Storage.prototype.key;
 let cache: VaultData | null = null;
 let key: CryptoKey | null = null;
 let patched = false;
-let writeChain = Promise.resolve();
+let writeChain: Promise<void> = Promise.resolve();
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
 function bytesToBase64(bytes: Uint8Array) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -39,9 +44,9 @@ function isSensitiveStorageKey(storageKey: string) {
   return storageKey.startsWith("rebuildme-mymoney-") || storageKey.startsWith("mymoney-");
 }
 async function deriveKey(pin: string, salt: Uint8Array) {
-  const material = await crypto.subtle.importKey("raw", encoder.encode(pin), "PBKDF2", false, ["deriveKey"]);
+  const material = await crypto.subtle.importKey("raw", toArrayBuffer(encoder.encode(pin)), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: ITERATIONS },
+    { name: "PBKDF2", hash: "SHA-256", salt: toArrayBuffer(salt), iterations: ITERATIONS },
     material,
     { name: "AES-GCM", length: 256 },
     false,
@@ -52,7 +57,7 @@ async function encryptVault(data: VaultData) {
   if (!key) throw new Error("VAULT_LOCKED");
   const iv = randomBytes(12);
   const plaintext = encoder.encode(JSON.stringify(data));
-  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv: toArrayBuffer(iv) }, key, toArrayBuffer(plaintext));
   const payload: VaultPayload = { version: 1, iv: bytesToBase64(iv), ciphertext: bytesToBase64(new Uint8Array(encrypted)) };
   nativeSet.call(localStorage, VAULT_KEY, JSON.stringify(payload));
 }
@@ -60,19 +65,16 @@ async function decryptVault(raw: string): Promise<VaultData> {
   if (!key) throw new Error("VAULT_LOCKED");
   const payload = JSON.parse(raw) as VaultPayload;
   if (payload.version !== 1 || !payload.iv || !payload.ciphertext) throw new Error("INVALID_VAULT");
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: base64ToBytes(payload.iv) },
-    key,
-    base64ToBytes(payload.ciphertext),
-  );
+  const iv = base64ToBytes(payload.iv);
+  const ciphertext = base64ToBytes(payload.ciphertext);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: toArrayBuffer(iv) }, key, toArrayBuffer(ciphertext));
   const value = JSON.parse(decoder.decode(decrypted));
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 function collectPlaintext(): VaultData {
   const data: VaultData = {};
-  const length = localStorage.length;
   const keys: string[] = [];
-  for (let i = 0; i < length; i += 1) {
+  for (let i = 0; i < localStorage.length; i += 1) {
     const storageKey = nativeKey.call(localStorage, i);
     if (storageKey && isSensitiveStorageKey(storageKey)) keys.push(storageKey);
   }
