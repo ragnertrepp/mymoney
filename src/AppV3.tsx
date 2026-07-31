@@ -4,705 +4,93 @@ import "./App.css";
 type TransactionType = "income" | "expense";
 type MainTab = "today" | "budget" | "debts" | "tasks" | "calendar";
 type BudgetTab = "overview" | "entry" | "settings";
-
-type Transaction = {
-  id: string;
-  name: string;
-  amount: number;
-  type: TransactionType;
-  date: string;
-  category: string;
-};
-
-type Debt = {
-  id: string;
-  name: string;
-  balance: number;
-  minimumPayment: number;
-  interest: number;
-  dueDate: string;
-  priority: number;
-};
-
-type DebtPayment = {
-  id: string;
-  debtId: string;
-  debtName: string;
-  amount: number;
-  date: string;
-};
-
-type Task = {
-  id: string;
-  title: string;
-  date: string;
-  completed: boolean;
-  linkedAmount?: number;
-};
-
-type Settings = {
-  startingBalance: number;
-  monthlyReserve: number;
-};
-
-type AppData = {
-  transactions: Transaction[];
-  debts: Debt[];
-  debtPayments: DebtPayment[];
-  tasks: Task[];
-  settings: Settings;
-};
+type Transaction = { id:string; name:string; amount:number; type:TransactionType; date:string; category:string };
+type Debt = { id:string; name:string; balance:number; minimumPayment:number; interest:number; dueDate:string; priority:number };
+type DebtPayment = { id:string; debtId:string; debtName:string; amount:number; date:string };
+type Task = { id:string; title:string; date:string; completed:boolean; linkedAmount?:number };
+type Settings = { startingBalance:number; monthlyReserve:number };
+type AppData = { transactions:Transaction[]; debts:Debt[]; debtPayments:DebtPayment[]; tasks:Task[]; settings:Settings };
 
 const STORAGE_KEY = "rebuildme-mymoney-v2";
-
-const initialData: AppData = {
-  transactions: [],
-  debts: [],
-  debtPayments: [],
-  tasks: [],
-  settings: { startingBalance: 0, monthlyReserve: 100 },
-};
-
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const euro = (value: number) =>
-  new Intl.NumberFormat("et-FI", { style: "currency", currency: "EUR" }).format(value);
-
-function normalizeData(value: unknown): AppData {
-  const candidate = value as Partial<AppData> | null;
-  return {
-    transactions: Array.isArray(candidate?.transactions) ? candidate.transactions : [],
-    debts: Array.isArray(candidate?.debts) ? candidate.debts : [],
-    debtPayments: Array.isArray(candidate?.debtPayments) ? candidate.debtPayments : [],
-    tasks: Array.isArray(candidate?.tasks) ? candidate.tasks : [],
-    settings: {
-      startingBalance:
-        typeof candidate?.settings?.startingBalance === "number"
-          ? candidate.settings.startingBalance
-          : 0,
-      monthlyReserve:
-        typeof candidate?.settings?.monthlyReserve === "number"
-          ? candidate.settings.monthlyReserve
-          : 100,
-    },
-  };
+const initialData:AppData = { transactions:[], debts:[], debtPayments:[], tasks:[], settings:{startingBalance:0,monthlyReserve:100} };
+const todayIso=()=>new Date().toISOString().slice(0,10);
+const createId=()=>`${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const euro=(value:number)=>new Intl.NumberFormat("en-FI",{style:"currency",currency:"EUR"}).format(value);
+const parseAmount=(value:string)=>Number(value.trim().replace(/\s/g,"").replace(",","."))||0;
+function addDays(date:string, days:number){const d=new Date(`${date}T12:00:00`);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)}
+function normalizeData(value:unknown):AppData{
+ const candidate=value as Partial<AppData>|null;
+ return {transactions:Array.isArray(candidate?.transactions)?candidate.transactions:[],debts:Array.isArray(candidate?.debts)?candidate.debts:[],debtPayments:Array.isArray(candidate?.debtPayments)?candidate.debtPayments:[],tasks:Array.isArray(candidate?.tasks)?candidate.tasks:[],settings:{startingBalance:typeof candidate?.settings?.startingBalance==="number"?candidate.settings.startingBalance:0,monthlyReserve:typeof candidate?.settings?.monthlyReserve==="number"?candidate.settings.monthlyReserve:100}};
 }
 
-export default function AppV3() {
-  const [tab, setTab] = useState<MainTab>("today");
-  const [budgetTab, setBudgetTab] = useState<BudgetTab>("overview");
+export default function AppV3(){
+ const [tab,setTab]=useState<MainTab>("today"),[budgetTab,setBudgetTab]=useState<BudgetTab>("overview");
+ const [data,setData]=useState<AppData>(()=>{try{const v2=localStorage.getItem(STORAGE_KEY);if(v2)return normalizeData(JSON.parse(v2));const v1=localStorage.getItem("rebuildme-mymoney-v1");if(v1)return normalizeData(JSON.parse(v1));return initialData}catch{return initialData}});
+ const [transactionName,setTransactionName]=useState(""),[transactionAmount,setTransactionAmount]=useState(""),[transactionType,setTransactionType]=useState<TransactionType>("expense"),[transactionDate,setTransactionDate]=useState(todayIso()),[transactionCategory,setTransactionCategory]=useState("Other");
+ const [debtName,setDebtName]=useState(""),[debtBalance,setDebtBalance]=useState(""),[debtMinimum,setDebtMinimum]=useState(""),[debtInterest,setDebtInterest]=useState(""),[debtDueDate,setDebtDueDate]=useState(todayIso()),[debtPriority,setDebtPriority]=useState("1");
+ const [taskTitle,setTaskTitle]=useState(""),[taskDate,setTaskDate]=useState(todayIso()),[taskAmount,setTaskAmount]=useState("");
+ const [purchaseName,setPurchaseName]=useState(""),[purchaseAmount,setPurchaseAmount]=useState("");
+ useEffect(()=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));window.dispatchEvent(new CustomEvent("mymoney-data-changed"))},[data]);
+ const currentMonth=todayIso().slice(0,7);
+ const monthStats=useMemo(()=>{
+  const monthTransactions=data.transactions.filter(x=>x.date?.slice(0,7)===currentMonth);
+  const monthlyIncome=monthTransactions.filter(x=>x.type==="income").reduce((s,x)=>s+Number(x.amount||0),0);
+  const monthlyExpenses=monthTransactions.filter(x=>x.type==="expense").reduce((s,x)=>s+Number(x.amount||0),0);
+  const monthDebtPayments=data.debtPayments.filter(x=>x.date?.slice(0,7)===currentMonth);
+  const debtPaidById=new Map<string,number>();monthDebtPayments.forEach(p=>debtPaidById.set(p.debtId,(debtPaidById.get(p.debtId)||0)+Number(p.amount||0)));
+  const monthlyDebtPaid=monthDebtPayments.reduce((s,x)=>s+Number(x.amount||0),0);
+  const monthlyDebtPlan=data.debts.reduce((s,x)=>s+Number(x.minimumPayment||0),0);
+  const monthlyDebtRemaining=data.debts.reduce((s,x)=>s+Math.max(0,Number(x.minimumPayment||0)-(debtPaidById.get(x.id)||0)),0);
+  const totalDebt=data.debts.reduce((s,x)=>s+Number(x.balance||0),0);
+  const highestInterest=Math.max(0,...data.debts.map(x=>Number(x.interest||0)));
+  return {monthlyIncome,monthlyExpenses,monthlyDebtPaid,monthlyDebtPlan,monthlyDebtRemaining,totalDebt,highestInterest,debtPaidById};
+ },[data,currentMonth]);
+ const currentBalance=data.settings.startingBalance+monthStats.monthlyIncome-monthStats.monthlyExpenses;
+ const safeToSpend=currentBalance-monthStats.monthlyDebtRemaining-Math.max(0,data.settings.monthlyReserve);
+ const remainingDays=useMemo(()=>{const n=new Date(),last=new Date(n.getFullYear(),n.getMonth()+1,0);return Math.max(1,last.getDate()-n.getDate()+1)},[]);
+ const dailyBudget=Math.max(0,safeToSpend/remainingDays);
+ const sortedDebts=useMemo(()=>[...data.debts].sort((a,b)=>a.priority!==b.priority?a.priority-b.priority:b.interest-a.interest),[data.debts]);
+ const upcomingTasks=useMemo(()=>[...data.tasks].filter(x=>!x.completed).sort((a,b)=>a.date.localeCompare(b.date)),[data.tasks]);
+ const sortedTasks=useMemo(()=>[...data.tasks].sort((a,b)=>a.date.localeCompare(b.date)),[data.tasks]);
+ const purchaseValue=parseAmount(purchaseAmount),afterPurchase=safeToSpend-purchaseValue;
+ const affordability=purchaseValue<=0?{status:"neutral",title:"Enter a price",message:"MyMoney checks the purchase against your safe budget."}:afterPurchase>=0?{status:"good",title:"YES",message:`You would have ${euro(afterPurchase)} left.`}:{status:"danger",title:"NO",message:`You are short by ${euro(Math.abs(afterPurchase))}.`};
 
-  const [data, setData] = useState<AppData>(() => {
-    try {
-      const v2 = localStorage.getItem(STORAGE_KEY);
-      if (v2) return normalizeData(JSON.parse(v2));
-      const v1 = localStorage.getItem("rebuildme-mymoney-v1");
-      if (v1) return normalizeData(JSON.parse(v1));
-      return initialData;
-    } catch {
-      return initialData;
-    }
-  });
+ function addTransaction(event:SyntheticEvent<HTMLFormElement>){event.preventDefault();const amount=parseAmount(transactionAmount);if(amount<=0)return;setData(p=>({...p,transactions:[{id:createId(),name:transactionName.trim()||(transactionType==="income"?"Income":"Expense"),amount,type:transactionType,date:transactionDate,category:transactionCategory},...p.transactions]}));setTransactionName("");setTransactionAmount("");setBudgetTab("overview")}
+ function deleteTransaction(id:string){setData(p=>({...p,transactions:p.transactions.filter(x=>x.id!==id)}))}
+ function addDebt(event:SyntheticEvent<HTMLFormElement>){event.preventDefault();const balance=parseAmount(debtBalance);if(!debtName.trim()||balance<=0)return;setData(p=>({...p,debts:[...p.debts,{id:createId(),name:debtName.trim(),balance,minimumPayment:Math.max(0,parseAmount(debtMinimum)),interest:Math.max(0,parseAmount(debtInterest)),dueDate:debtDueDate,priority:Math.max(1,Number(debtPriority)||1)}]}));setDebtName("");setDebtBalance("");setDebtMinimum("");setDebtInterest("");setDebtPriority("1")}
+ function applyDebtPayment(debt:Debt, requested:number){if(!Number.isFinite(requested)||requested<=0)return;const paidAmount=Math.min(requested,debt.balance),date=todayIso();setData(p=>({...p,debts:p.debts.map(x=>x.id===debt.id?{...x,balance:Math.max(0,x.balance-paidAmount)}:x).filter(x=>x.balance>0),debtPayments:[{id:createId(),debtId:debt.id,debtName:debt.name,amount:paidAmount,date},...p.debtPayments],transactions:[{id:createId(),name:`Debt payment: ${debt.name}`,amount:paidAmount,type:"expense",date,category:"Debt payment"},...p.transactions]}))}
+ function payDefault(debt:Debt){const amount=debt.minimumPayment>0?Math.min(debt.minimumPayment,debt.balance):debt.balance;if(window.confirm(`Record ${euro(amount)} payment to ${debt.name}?`))applyDebtPayment(debt,amount)}
+ function payOther(debt:Debt){const text=window.prompt(`Payment amount for ${debt.name}:`,String(Math.min(debt.minimumPayment||debt.balance,debt.balance)));if(text===null)return;applyDebtPayment(debt,parseAmount(text))}
+ function addTask(event:SyntheticEvent<HTMLFormElement>){event.preventDefault();if(!taskTitle.trim())return;setData(p=>({...p,tasks:[...p.tasks,{id:createId(),title:taskTitle.trim(),date:taskDate,completed:false,linkedAmount:parseAmount(taskAmount)||undefined}]}));setTaskTitle("");setTaskAmount("")}
+ function toggleTask(id:string){setData(p=>({...p,tasks:p.tasks.map(x=>x.id===id?{...x,completed:!x.completed}:x)}))}
+ function updateSettings(field:keyof Settings,value:string){setData(p=>({...p,settings:{...p.settings,[field]:parseAmount(value)}}))}
+ function resetAll(){if(window.confirm("Delete all MyMoney data? This cannot be undone."))setData(initialData)}
 
-  const [transactionName, setTransactionName] = useState("");
-  const [transactionAmount, setTransactionAmount] = useState("");
-  const [transactionType, setTransactionType] = useState<TransactionType>("expense");
-  const [transactionDate, setTransactionDate] = useState(todayIso());
-  const [transactionCategory, setTransactionCategory] = useState("Muu");
-
-  const [debtName, setDebtName] = useState("");
-  const [debtBalance, setDebtBalance] = useState("");
-  const [debtMinimum, setDebtMinimum] = useState("");
-  const [debtInterest, setDebtInterest] = useState("");
-  const [debtDueDate, setDebtDueDate] = useState(todayIso());
-  const [debtPriority, setDebtPriority] = useState("1");
-
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskDate, setTaskDate] = useState(todayIso());
-  const [taskAmount, setTaskAmount] = useState("");
-
-  const [purchaseName, setPurchaseName] = useState("");
-  const [purchaseAmount, setPurchaseAmount] = useState("");
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [data]);
-
-  const currentMonth = todayIso().slice(0, 7);
-
-  const monthStats = useMemo(() => {
-    const monthTransactions: Transaction[] = [];
-    let monthlyIncome = 0;
-    let monthlyExpenses = 0;
-
-    for (const item of data.transactions) {
-      if (item.date?.slice(0, 7) !== currentMonth) continue;
-      monthTransactions.push(item);
-      if (item.type === "income") monthlyIncome += Number(item.amount || 0);
-      else if (item.type === "expense") monthlyExpenses += Number(item.amount || 0);
-    }
-
-    const monthDebtPayments: DebtPayment[] = [];
-    const debtPaidById = new Map<string, number>();
-    let monthlyDebtPaid = 0;
-
-    for (const payment of data.debtPayments) {
-      if (payment.date?.slice(0, 7) !== currentMonth) continue;
-      monthDebtPayments.push(payment);
-      const amount = Number(payment.amount || 0);
-      monthlyDebtPaid += amount;
-      debtPaidById.set(payment.debtId, (debtPaidById.get(payment.debtId) ?? 0) + amount);
-    }
-
-    let monthlyDebtPlan = 0;
-    let monthlyDebtRemaining = 0;
-    let totalDebt = 0;
-    let highestInterest = 0;
-
-    for (const debt of data.debts) {
-      monthlyDebtPlan += Number(debt.minimumPayment || 0);
-      totalDebt += Number(debt.balance || 0);
-      highestInterest = Math.max(highestInterest, Number(debt.interest || 0));
-      const paid = debtPaidById.get(debt.id) ?? 0;
-      monthlyDebtRemaining += Math.max(0, Number(debt.minimumPayment || 0) - paid);
-    }
-
-    return {
-      monthTransactions,
-      monthDebtPayments,
-      debtPaidById,
-      monthlyIncome,
-      monthlyExpenses,
-      monthlyDebtPlan,
-      monthlyDebtPaid,
-      monthlyDebtRemaining,
-      totalDebt,
-      highestInterest,
-    };
-  }, [data.transactions, data.debtPayments, data.debts, currentMonth]);
-
-  const currentBalance = data.settings.startingBalance + monthStats.monthlyIncome - monthStats.monthlyExpenses;
-  const safeToSpend = currentBalance - monthStats.monthlyDebtRemaining - Math.max(0, data.settings.monthlyReserve);
-
-  const remainingDays = useMemo(() => {
-    const now = new Date();
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return Math.max(1, lastDay.getDate() - now.getDate() + 1);
-  }, []);
-
-  const dailyBudget = Math.max(0, safeToSpend / remainingDays);
-  const sortedDebts = useMemo(() => [...data.debts].sort((a, b) =>
-    a.priority !== b.priority ? a.priority - b.priority : b.interest - a.interest,
-  ), [data.debts]);
-  const upcomingTasks = useMemo(() => [...data.tasks]
-    .filter((task) => !task.completed)
-    .sort((a, b) => a.date.localeCompare(b.date)), [data.tasks]);
-  const sortedTasks = useMemo(() => [...data.tasks].sort((a, b) => a.date.localeCompare(b.date)), [data.tasks]);
-
-  const purchaseValue = Number(purchaseAmount) || 0;
-  const affordability = useMemo(() => {
-    if (purchaseValue <= 0) {
-      return {
-        status: "neutral",
-        title: "Sisesta ostu hind",
-        message: "Rakendus arvutab, kas ost mahub sinu turvalisse eelarvesse.",
-      };
-    }
-
-    const afterPurchase = safeToSpend - purchaseValue;
-    if (afterPurchase >= data.settings.monthlyReserve) {
-      return {
-        status: "good",
-        title: "Jah, saad lubada",
-        message: `Pärast ostu jääks vabaks ${euro(afterPurchase)}.`,
-      };
-    }
-    if (afterPurchase >= 0) {
-      return {
-        status: "warning",
-        title: "Saad lubada, aga eelarve läheb pingeliseks",
-        message: `Pärast ostu jääks ainult ${euro(afterPurchase)}.`,
-      };
-    }
-    return {
-      status: "danger",
-      title: "Praegu ei ole mõistlik",
-      message: `Turvalisest eelarvest jääb puudu ${euro(Math.abs(afterPurchase))}.`,
-    };
-  }, [purchaseValue, safeToSpend, data.settings.monthlyReserve]);
-
-  function addTransaction(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const amount = Number(transactionAmount);
-    if (!transactionName.trim() || amount <= 0) return;
-
-    setData((previous) => ({
-      ...previous,
-      transactions: [
-        {
-          id: createId(),
-          name: transactionName.trim(),
-          amount,
-          type: transactionType,
-          date: transactionDate,
-          category: transactionCategory,
-        },
-        ...previous.transactions,
-      ],
-    }));
-
-    setTransactionName("");
-    setTransactionAmount("");
-    setBudgetTab("overview");
-  }
-
-  function deleteTransaction(id: string) {
-    setData((previous) => ({
-      ...previous,
-      transactions: previous.transactions.filter((item) => item.id !== id),
-    }));
-  }
-
-  function addDebt(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const balance = Number(debtBalance);
-    if (!debtName.trim() || balance <= 0) return;
-
-    setData((previous) => ({
-      ...previous,
-      debts: [
-        ...previous.debts,
-        {
-          id: createId(),
-          name: debtName.trim(),
-          balance,
-          minimumPayment: Math.max(0, Number(debtMinimum) || 0),
-          interest: Math.max(0, Number(debtInterest) || 0),
-          dueDate: debtDueDate,
-          priority: Math.max(1, Number(debtPriority) || 1),
-        },
-      ],
-    }));
-
-    setDebtName("");
-    setDebtBalance("");
-    setDebtMinimum("");
-    setDebtInterest("");
-    setDebtPriority("1");
-  }
-
-  function registerDebtPayment(debt: Debt) {
-    const text = prompt(`Kui palju maksid võlale "${debt.name}"?`, String(debt.minimumPayment || ""));
-    if (text === null) return;
-    const amount = Number(text.replace(",", "."));
-    if (!Number.isFinite(amount) || amount <= 0) return;
-
-    const paidAmount = Math.min(amount, debt.balance);
-    const date = todayIso();
-
-    setData((previous) => ({
-      ...previous,
-      debts: previous.debts
-        .map((item) =>
-          item.id === debt.id
-            ? { ...item, balance: Math.max(0, item.balance - paidAmount) }
-            : item,
-        )
-        .filter((item) => item.balance > 0),
-      debtPayments: [
-        { id: createId(), debtId: debt.id, debtName: debt.name, amount: paidAmount, date },
-        ...previous.debtPayments,
-      ],
-      transactions: [
-        {
-          id: createId(),
-          name: `Võlamakse: ${debt.name}`,
-          amount: paidAmount,
-          type: "expense",
-          date,
-          category: "Võlamakse",
-        },
-        ...previous.transactions,
-      ],
-    }));
-  }
-
-  function addTask(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!taskTitle.trim()) return;
-
-    setData((previous) => ({
-      ...previous,
-      tasks: [
-        ...previous.tasks,
-        {
-          id: createId(),
-          title: taskTitle.trim(),
-          date: taskDate,
-          completed: false,
-          linkedAmount: Number(taskAmount) || undefined,
-        },
-      ],
-    }));
-
-    setTaskTitle("");
-    setTaskAmount("");
-  }
-
-  function toggleTask(id: string) {
-    setData((previous) => ({
-      ...previous,
-      tasks: previous.tasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task,
-      ),
-    }));
-  }
-
-  function updateSettings(field: keyof Settings, value: string) {
-    setData((previous) => ({
-      ...previous,
-      settings: { ...previous.settings, [field]: Number(value) || 0 },
-    }));
-  }
-
-  function exportBackup() {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `mymoney-backup-${todayIso()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function resetAll() {
-    if (window.confirm("Kas kustutada kõik MyMoney andmed? Seda ei saa tagasi võtta.")) {
-      setData(initialData);
-    }
-  }
-
-  return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">RebuildMe</p>
-          <h1>MyMoney</h1>
-        </div>
-        <button className="secondary-button" onClick={exportBackup}>Varukoopia</button>
-      </header>
-
-      <nav className="navigation">
-        <NavButton label="Täna" active={tab === "today"} onClick={() => setTab("today")} />
-        <NavButton label="Eelarve" active={tab === "budget"} onClick={() => setTab("budget")} />
-        <NavButton label="Võlad" active={tab === "debts"} onClick={() => setTab("debts")} />
-        <NavButton label="Todo" active={tab === "tasks"} onClick={() => setTab("tasks")} />
-        <NavButton label="Kalender" active={tab === "calendar"} onClick={() => setTab("calendar")} />
-      </nav>
-
-      <main>
-        {tab === "today" && (
-          <>
-            <SummaryGrid
-              currentBalance={currentBalance}
-              safeToSpend={safeToSpend}
-              dailyBudget={dailyBudget}
-              remainingDays={remainingDays}
-              totalDebt={monthStats.totalDebt}
-              debtCount={data.debts.length}
-            />
-
-            <section className="payment-progress card">
-              <div>
-                <p className="eyebrow">Selle kuu võlaplaan</p>
-                <h2>{euro(monthStats.monthlyDebtPaid)} / {euro(monthStats.monthlyDebtPlan)} makstud</h2>
-              </div>
-              <ProgressBar value={monthStats.monthlyDebtPlan > 0 ? monthStats.monthlyDebtPaid / monthStats.monthlyDebtPlan : 0} />
-              <span>Veel maksta: {euro(monthStats.monthlyDebtRemaining)}</span>
-            </section>
-
-            <section className="two-column">
-              <div className="card">
-                <SectionTitle eyebrow="Kontroll" title="Kas saan lubada?" />
-                <div className="form-grid">
-                  <label>Ostu nimetus
-                    <input value={purchaseName} onChange={(e) => setPurchaseName(e.target.value)} placeholder="Näiteks telefon või toit" />
-                  </label>
-                  <label>Hind
-                    <input type="number" min="0" step="0.01" value={purchaseAmount} onChange={(e) => setPurchaseAmount(e.target.value)} placeholder="0.00" />
-                  </label>
-                </div>
-                <div className={`affordability ${affordability.status}`}>
-                  <strong>{affordability.title}</strong>
-                  <span>{affordability.message}</span>
-                </div>
-              </div>
-
-              <div className="card">
-                <SectionTitle eyebrow="Järgmised tegevused" title="Todo" />
-                {upcomingTasks.length === 0 ? <EmptyState text="Ühtegi aktiivset ülesannet pole." /> : (
-                  <div className="list">
-                    {upcomingTasks.slice(0, 5).map((task) => (
-                      <div className="list-row" key={task.id}>
-                        <button className="check-button" onClick={() => toggleTask(task.id)}>○</button>
-                        <div className="list-content">
-                          <strong>{task.title}</strong>
-                          <span>{task.date}{task.linkedAmount ? ` · ${euro(task.linkedAmount)}` : ""}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          </>
-        )}
-
-        {tab === "budget" && (
-          <>
-            <nav className="sub-navigation" aria-label="Eelarve vaated">
-              <SubNavButton label="Ülevaade" active={budgetTab === "overview"} onClick={() => setBudgetTab("overview")} />
-              <SubNavButton label="Lisa tulu/kulu" active={budgetTab === "entry"} onClick={() => setBudgetTab("entry")} />
-              <SubNavButton label="Seaded" active={budgetTab === "settings"} onClick={() => setBudgetTab("settings")} />
-            </nav>
-
-            {budgetTab === "overview" && (
-              <>
-                <section className="summary-grid">
-                  <SummaryCard label="Sissetulekud" value={euro(monthStats.monthlyIncome)} detail="Sellel kuul" />
-                  <SummaryCard label="Kulud" value={euro(monthStats.monthlyExpenses)} detail="Sellel kuul" />
-                  <SummaryCard label="Võlamaksed" value={euro(monthStats.monthlyDebtPaid)} detail={`Plaan ${euro(monthStats.monthlyDebtPlan)}`} />
-                  <SummaryCard label="Prognoos" value={euro(safeToSpend)} detail="Pärast reservi ja makseid" />
-                </section>
-
-                <section className="card">
-                  <SectionTitle eyebrow="Ajalugu" title="Tulud ja kulud" />
-                  {data.transactions.length === 0 ? <EmptyState text="Ühtegi tulu ega kulu pole veel lisatud." /> : (
-                    <div className="transaction-list">
-                      {data.transactions.map((item) => (
-                        <article className="transaction-row" key={item.id}>
-                          <div>
-                            <strong>{item.name}</strong>
-                            <span>{item.date} · {item.category}</span>
-                          </div>
-                          <div className="transaction-value">
-                            <strong className={item.type === "income" ? "positive-text" : "negative-text"}>
-                              {item.type === "income" ? "+" : "−"}{euro(item.amount)}
-                            </strong>
-                            <button className="danger-link" onClick={() => deleteTransaction(item.id)}>Kustuta</button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </>
-            )}
-
-            {budgetTab === "entry" && (
-              <section className="card compact-form-card">
-                <SectionTitle eyebrow="Uus kirje" title={transactionType === "income" ? "Lisa tulu" : "Lisa kulu"} />
-                <div className="type-switch">
-                  <button className={transactionType === "income" ? "active" : ""} onClick={() => { setTransactionType("income"); setTransactionCategory("Sissetulek"); }}>Tulu</button>
-                  <button className={transactionType === "expense" ? "active" : ""} onClick={() => setTransactionType("expense")}>Kulu</button>
-                </div>
-
-                <form onSubmit={addTransaction}>
-                  <div className="form-grid">
-                    <label>Nimetus
-                      <input required value={transactionName} onChange={(e) => setTransactionName(e.target.value)} placeholder={transactionType === "income" ? "Näiteks palk" : "Näiteks toit või üür"} />
-                    </label>
-                    <label>Summa
-                      <input required type="number" min="0.01" step="0.01" value={transactionAmount} onChange={(e) => setTransactionAmount(e.target.value)} />
-                    </label>
-                    <label>Kategooria
-                      <select value={transactionCategory} onChange={(e) => setTransactionCategory(e.target.value)}>
-                        <option>Elamine</option><option>Toit</option><option>Transport</option>
-                        <option>Lapsed</option><option>Võlamakse</option><option>Tervis</option>
-                        <option>Töö</option><option>Sissetulek</option><option>Muu</option>
-                      </select>
-                    </label>
-                    <label>Kuupäev
-                      <input type="date" value={transactionDate} onChange={(e) => setTransactionDate(e.target.value)} />
-                    </label>
-                  </div>
-                  <button className="primary-button" type="submit">
-                    {transactionType === "income" ? "Lisa tulu" : "Lisa kulu"}
-                  </button>
-                </form>
-              </section>
-            )}
-
-            {budgetTab === "settings" && (
-              <section className="card compact-form-card">
-                <SectionTitle eyebrow="Eelarve seaded" title="Kuu algandmed" />
-                <div className="form-grid">
-                  <label>Algjääk
-                    <input type="number" step="0.01" value={data.settings.startingBalance} onChange={(e) => updateSettings("startingBalance", e.target.value)} />
-                    <small>Raha, mis oli kuu alguses kasutada.</small>
-                  </label>
-                  <label>Turvareserv
-                    <input type="number" min="0" step="0.01" value={data.settings.monthlyReserve} onChange={(e) => updateSettings("monthlyReserve", e.target.value)} />
-                    <small>Summa, mida rakendus ei arvesta vabalt kasutatavaks.</small>
-                  </label>
-                </div>
-              </section>
-            )}
-          </>
-        )}
-
-        {tab === "debts" && (
-          <>
-            <section className="summary-grid">
-              <SummaryCard label="Võlgu kokku" value={euro(monthStats.totalDebt)} detail={`${data.debts.length} aktiivset võlga`} />
-              <SummaryCard label="Kuu plaan" value={euro(monthStats.monthlyDebtPlan)} detail="Minimaalsed maksed" />
-              <SummaryCard label="Makstud" value={euro(monthStats.monthlyDebtPaid)} detail={`Veel ${euro(monthStats.monthlyDebtRemaining)}`} />
-              <SummaryCard label="Kõrgeim intress" value={`${monthStats.highestInterest}%`} detail="Kõige kallim võlg" />
-            </section>
-
-            <section className="card">
-              <SectionTitle eyebrow="Uus võlg" title="Lisa võlatabelisse" />
-              <form onSubmit={addDebt}>
-                <div className="form-grid wide">
-                  <label>Võlausaldaja<input required value={debtName} onChange={(e) => setDebtName(e.target.value)} /></label>
-                  <label>Võlajääk<input required type="number" min="0.01" step="0.01" value={debtBalance} onChange={(e) => setDebtBalance(e.target.value)} /></label>
-                  <label>Minimaalne kuumakse<input type="number" min="0" step="0.01" value={debtMinimum} onChange={(e) => setDebtMinimum(e.target.value)} /></label>
-                  <label>Intress %<input type="number" min="0" step="0.01" value={debtInterest} onChange={(e) => setDebtInterest(e.target.value)} /></label>
-                  <label>Järgmine tähtaeg<input type="date" value={debtDueDate} onChange={(e) => setDebtDueDate(e.target.value)} /></label>
-                  <label>Prioriteet<input type="number" min="1" step="1" value={debtPriority} onChange={(e) => setDebtPriority(e.target.value)} /></label>
-                </div>
-                <button className="primary-button" type="submit">Lisa võlg</button>
-              </form>
-            </section>
-
-            <section className="card">
-              <SectionTitle eyebrow="Makseplaan" title="Võlad prioriteedi järgi" />
-              {sortedDebts.length === 0 ? <EmptyState text="Võlatabel on tühi." /> : (
-                <div className="debt-list">
-                  {sortedDebts.map((debt) => {
-                    const paid = monthStats.debtPaidById.get(debt.id) ?? 0;
-                    const remaining = Math.max(0, debt.minimumPayment - paid);
-                    return (
-                      <article className="debt-card" key={debt.id}>
-                        <div className="debt-header">
-                          <div><span className="priority-badge">Prioriteet {debt.priority}</span><h3>{debt.name}</h3></div>
-                          <strong>{euro(debt.balance)}</strong>
-                        </div>
-                        <div className="debt-details">
-                          <span>Kuu plaan: {euro(debt.minimumPayment)}</span><span>Makstud: {euro(paid)}</span>
-                          <span>Veel maksta: {euro(remaining)}</span><span>Intress: {debt.interest}%</span>
-                          <span>Tähtaeg: {debt.dueDate}</span>
-                        </div>
-                        <ProgressBar value={debt.minimumPayment > 0 ? paid / debt.minimumPayment : 0} />
-                        <div className="button-row">
-                          <button className="primary-button small" onClick={() => registerDebtPayment(debt)}>Märgi makse</button>
-                          <button className="danger-link" onClick={() => setData((p) => ({ ...p, debts: p.debts.filter((d) => d.id !== debt.id) }))}>Kustuta</button>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </>
-        )}
-
-        {tab === "tasks" && (
-          <>
-            <section className="card">
-              <SectionTitle eyebrow="Uus ülesanne" title="Lisa Todo" />
-              <form onSubmit={addTask}>
-                <div className="form-grid">
-                  <label>Ülesanne<input required value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} /></label>
-                  <label>Kuupäev<input type="date" value={taskDate} onChange={(e) => setTaskDate(e.target.value)} /></label>
-                  <label>Seotud summa<input type="number" min="0" step="0.01" value={taskAmount} onChange={(e) => setTaskAmount(e.target.value)} /></label>
-                </div>
-                <button className="primary-button" type="submit">Lisa ülesanne</button>
-              </form>
-            </section>
-
-            <section className="card">
-              <SectionTitle eyebrow="Kõik tegevused" title="Todo nimekiri" />
-              {data.tasks.length === 0 ? <EmptyState text="Todo nimekiri on tühi." /> : (
-                <div className="list">
-                  {sortedTasks.map((task) => (
-                    <div className={`list-row ${task.completed ? "completed" : ""}`} key={task.id}>
-                      <button className="check-button" onClick={() => toggleTask(task.id)}>{task.completed ? "✓" : "○"}</button>
-                      <div className="list-content"><strong>{task.title}</strong><span>{task.date}{task.linkedAmount ? ` · ${euro(task.linkedAmount)}` : ""}</span></div>
-                      <button className="danger-link" onClick={() => setData((p) => ({ ...p, tasks: p.tasks.filter((t) => t.id !== task.id) }))}>Kustuta</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </>
-        )}
-
-        {tab === "calendar" && (
-          <section className="card">
-            <SectionTitle eyebrow="Ajajoon" title="Kalender ja tähtajad" />
-            <CalendarTimeline debts={data.debts} debtPayments={data.debtPayments} tasks={data.tasks} transactions={data.transactions} />
-          </section>
-        )}
-
-        <section className="footer-actions">
-          <button className="danger-link" onClick={resetAll}>Kustuta kõik andmed</button>
-          <span>Andmed salvestatakse sellesse seadmesse.</span>
-        </section>
-      </main>
-    </div>
-  );
+ return <div className="app-shell">
+  <header className="topbar"><div><p className="eyebrow">RebuildMe</p><h1>MyMoney</h1></div><button className="secondary-button">Encrypted backup</button></header>
+  <nav className="navigation">
+   <NavButton label="Täna" active={tab==="today"} onClick={()=>setTab("today")}/><NavButton label="Eelarve" active={tab==="budget"} onClick={()=>setTab("budget")}/><NavButton label="Võlad" active={tab==="debts"} onClick={()=>setTab("debts")}/><NavButton label="Todo" active={tab==="tasks"} onClick={()=>setTab("tasks")}/><NavButton label="Kalender" active={tab==="calendar"} onClick={()=>setTab("calendar")}/>
+  </nav>
+  <main>
+   {tab==="today"&&<><SummaryGrid currentBalance={currentBalance} safeToSpend={safeToSpend} dailyBudget={dailyBudget} remainingDays={remainingDays} totalDebt={monthStats.totalDebt} debtCount={data.debts.length}/><section className="payment-progress card"><div><p className="eyebrow">Monthly debt plan</p><h2>{euro(monthStats.monthlyDebtPaid)} / {euro(monthStats.monthlyDebtPlan)} paid</h2></div><ProgressBar value={monthStats.monthlyDebtPlan>0?monthStats.monthlyDebtPaid/monthStats.monthlyDebtPlan:0}/><span>Remaining: {euro(monthStats.monthlyDebtRemaining)}</span></section><section className="two-column"><div className="card"><SectionTitle eyebrow="Check" title="Can I buy it?"/><div className="form-grid"><label>Purchase name<input value={purchaseName} onChange={e=>setPurchaseName(e.target.value)} placeholder="Optional"/></label><label>Price<input inputMode="decimal" value={purchaseAmount} onChange={e=>setPurchaseAmount(e.target.value)} placeholder="0.00"/></label></div><div className={`affordability ${affordability.status}`}><strong>{affordability.title}</strong><span>{affordability.message}</span></div></div><div className="card"><SectionTitle eyebrow="Next actions" title="To-Do"/>{upcomingTasks.length===0?<EmptyState text="No active tasks."/>:<div className="list">{upcomingTasks.slice(0,5).map(task=><div className="list-row" key={task.id}><button className="check-button" onClick={()=>toggleTask(task.id)}>○</button><div className="list-content"><strong>{task.title}</strong><span>{task.date}{task.linkedAmount?` · ${euro(task.linkedAmount)}`:""}</span></div></div>)}</div>}</div></section></>}
+   {tab==="budget"&&<><nav className="sub-navigation legacy-budget-navigation" aria-label="Budget views"><SubNavButton label="Overview" active={budgetTab==="overview"} onClick={()=>setBudgetTab("overview")}/><SubNavButton label="Add entry" active={budgetTab==="entry"} onClick={()=>setBudgetTab("entry")}/><SubNavButton label="Settings" active={budgetTab==="settings"} onClick={()=>setBudgetTab("settings")}/></nav>{budgetTab==="overview"&&<><section className="summary-grid"><SummaryCard label="Income" value={euro(monthStats.monthlyIncome)} detail="This month"/><SummaryCard label="Expenses" value={euro(monthStats.monthlyExpenses)} detail="This month"/><SummaryCard label="Debt payments" value={euro(monthStats.monthlyDebtPaid)} detail={`Plan ${euro(monthStats.monthlyDebtPlan)}`}/><SummaryCard label="Safe to spend" value={euro(safeToSpend)} detail="After reserve and payments"/></section><section className="card"><SectionTitle eyebrow="History" title="Income and expenses"/>{data.transactions.length===0?<EmptyState text="No transactions yet."/>:<div className="transaction-list">{data.transactions.map(item=><article className="transaction-row" key={item.id}><div><strong>{item.name}</strong><span>{item.date} · {item.category}</span></div><div className="transaction-value"><strong className={item.type==="income"?"positive-text":"negative-text"}>{item.type==="income"?"+":"−"}{euro(item.amount)}</strong><button className="danger-link" onClick={()=>deleteTransaction(item.id)}>Delete</button></div></article>)}</div>}</section></>}{budgetTab==="entry"&&<section className="card compact-form-card"><SectionTitle eyebrow="New entry" title={transactionType==="income"?"Add income":"Add expense"}/><div className="type-switch"><button className={transactionType==="income"?"active":""} onClick={()=>{setTransactionType("income");setTransactionCategory("Income")}}>Income</button><button className={transactionType==="expense"?"active":""} onClick={()=>setTransactionType("expense")}>Expense</button></div><form onSubmit={addTransaction}><div className="form-grid"><label>Name (optional)<input value={transactionName} onChange={e=>setTransactionName(e.target.value)}/></label><label>Amount<input required inputMode="decimal" value={transactionAmount} onChange={e=>setTransactionAmount(e.target.value)}/></label><label>Category<select value={transactionCategory} onChange={e=>setTransactionCategory(e.target.value)}><option>Housing</option><option>Food</option><option>Transport</option><option>Children</option><option>Debt payment</option><option>Health</option><option>Work</option><option>Income</option><option>Other</option></select></label><label>Date<input type="date" value={transactionDate} onChange={e=>setTransactionDate(e.target.value)}/></label></div><button className="primary-button">Save</button></form></section>}{budgetTab==="settings"&&<section className="card compact-form-card"><SectionTitle eyebrow="Budget settings" title="Monthly starting values"/><div className="form-grid"><label>Starting balance<input inputMode="decimal" value={data.settings.startingBalance} onChange={e=>updateSettings("startingBalance",e.target.value)}/></label><label>Safety reserve<input inputMode="decimal" value={data.settings.monthlyReserve} onChange={e=>updateSettings("monthlyReserve",e.target.value)}/></label></div></section>}</>}
+   {tab==="debts"&&<><section className="summary-grid"><SummaryCard label="Total debt" value={euro(monthStats.totalDebt)} detail={`${data.debts.length} active`}/><SummaryCard label="Monthly plan" value={euro(monthStats.monthlyDebtPlan)} detail="Minimum payments"/><SummaryCard label="Paid" value={euro(monthStats.monthlyDebtPaid)} detail={`Remaining ${euro(monthStats.monthlyDebtRemaining)}`}/><SummaryCard label="Highest interest" value={`${monthStats.highestInterest}%`} detail="Most expensive debt"/></section><section className="card"><SectionTitle eyebrow="New Cash Out" title="Add debt"/><form onSubmit={addDebt}><div className="form-grid wide"><label>Who you owe<input required value={debtName} onChange={e=>setDebtName(e.target.value)}/></label><label>Balance<input required inputMode="decimal" value={debtBalance} onChange={e=>setDebtBalance(e.target.value)}/></label><label>Monthly payment<input inputMode="decimal" value={debtMinimum} onChange={e=>setDebtMinimum(e.target.value)}/></label><label>Interest %<input inputMode="decimal" value={debtInterest} onChange={e=>setDebtInterest(e.target.value)}/></label><label>Due date<input type="date" value={debtDueDate} onChange={e=>setDebtDueDate(e.target.value)}/></label><label>Priority<input inputMode="numeric" value={debtPriority} onChange={e=>setDebtPriority(e.target.value.replace(/\D/g,""))}/></label></div><button className="primary-button">Add Cash Out</button></form></section><section className="card"><SectionTitle eyebrow="Payment plan" title="Debts by priority"/>{sortedDebts.length===0?<EmptyState text="No Cash Out entries."/>:<div className="debt-list">{sortedDebts.map(debt=>{const paid=monthStats.debtPaidById.get(debt.id)||0,remaining=Math.max(0,debt.minimumPayment-paid),defaultAmount=debt.minimumPayment>0?Math.min(debt.minimumPayment,debt.balance):debt.balance;return <article className="debt-card" key={debt.id}><div className="debt-header"><div><span className="priority-badge">Priority {debt.priority}</span><h3>{debt.name}</h3></div><strong>{euro(debt.balance)}</strong></div><div className="debt-details"><span>Monthly plan: {euro(debt.minimumPayment)}</span><span>Paid: {euro(paid)}</span><span>Still due: {euro(remaining)}</span><span>Interest: {debt.interest}%</span><span>Due: {debt.dueDate}</span></div><ProgressBar value={debt.minimumPayment>0?paid/debt.minimumPayment:0}/><div className="button-row"><button className="primary-button small" onClick={()=>payDefault(debt)}>Pay {euro(defaultAmount)}</button><button className="secondary-button small" onClick={()=>payOther(debt)}>Other amount</button><button className="danger-link" onClick={()=>setData(p=>({...p,debts:p.debts.filter(x=>x.id!==debt.id)}))}>Delete</button></div></article>})}</div>}</section></>}
+   {tab==="tasks"&&<><section className="card"><SectionTitle eyebrow="New task" title="Add To-Do"/><form onSubmit={addTask}><div className="form-grid"><label>Task<input required value={taskTitle} onChange={e=>setTaskTitle(e.target.value)}/></label><label>Date<input type="date" value={taskDate} onChange={e=>setTaskDate(e.target.value)}/></label><label>Linked amount (optional)<input inputMode="decimal" value={taskAmount} onChange={e=>setTaskAmount(e.target.value)}/></label></div><button className="primary-button">Add To-Do</button></form></section><section className="card"><SectionTitle eyebrow="Tasks" title="To-Do list"/>{data.tasks.length===0?<EmptyState text="No tasks yet."/>:<div className="list">{sortedTasks.map(task=><div className={`list-row ${task.completed?"completed":""}`} key={task.id}><button className="check-button" onClick={()=>toggleTask(task.id)}>{task.completed?"✓":"○"}</button><div className="list-content"><strong>{task.title}</strong><span>{task.date}{task.linkedAmount?` · ${euro(task.linkedAmount)}`:""}</span></div><button className="danger-link" onClick={()=>setData(p=>({...p,tasks:p.tasks.filter(x=>x.id!==task.id)}))}>Delete</button></div>)}</div>}</section></>}
+   {tab==="calendar"&&<section className="card"><SectionTitle eyebrow="Next 7 days" title="Calendar"/><CalendarTimeline debts={data.debts} debtPayments={data.debtPayments} tasks={data.tasks} transactions={data.transactions}/></section>}
+   <section className="footer-actions"><button className="danger-link" onClick={resetAll}>Delete all data</button><span>Data is encrypted on this device.</span></section>
+  </main>
+ </div>
 }
-
-function NavButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return <button className={`nav-button ${active ? "active" : ""}`} onClick={onClick}>{label}</button>;
-}
-
-function SubNavButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return <button className={active ? "active" : ""} onClick={onClick}>{label}</button>;
-}
-
-function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
-  return <div className="section-heading"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div></div>;
-}
-
-function SummaryCard({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <article className="summary-card"><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
-}
-
-function SummaryGrid(props: { currentBalance: number; safeToSpend: number; dailyBudget: number; remainingDays: number; totalDebt: number; debtCount: number }) {
-  return (
-    <section className="summary-grid">
-      <SummaryCard label="Praegune saldo" value={euro(props.currentBalance)} detail="Algjääk + tulud − kulud" />
-      <SummaryCard label="Turvaliselt kasutada" value={euro(Math.max(0, props.safeToSpend))} detail="Pärast reservi ja makseid" />
-      <SummaryCard label="Päevane eelarve" value={euro(props.dailyBudget)} detail={`${props.remainingDays} päeva kuu lõpuni`} />
-      <SummaryCard label="Võlgu kokku" value={euro(props.totalDebt)} detail={`${props.debtCount} aktiivset võlga`} />
-    </section>
-  );
-}
-
-function ProgressBar({ value }: { value: number }) {
-  const percentage = Math.max(0, Math.min(100, value * 100));
-  return <div className="progress-track" aria-label={`${Math.round(percentage)}%`}><div className="progress-fill" style={{ width: `${percentage}%` }} /></div>;
-}
-
-function EmptyState({ text }: { text: string }) {
-  return <div className="empty-state">{text}</div>;
-}
-
-function CalendarTimeline({ debts, debtPayments, tasks, transactions }: { debts: Debt[]; debtPayments: DebtPayment[]; tasks: Task[]; transactions: Transaction[] }) {
-  const entries = [
-    ...debts.map((debt) => ({ id: `debt-${debt.id}`, date: debt.dueDate, title: `Võlamakse tähtaeg: ${debt.name}`, description: euro(debt.minimumPayment), type: "Võlg" })),
-    ...debtPayments.map((p) => ({ id: `payment-${p.id}`, date: p.date, title: `Makstud: ${p.debtName}`, description: euro(p.amount), type: "Makse" })),
-    ...tasks.map((task) => ({ id: `task-${task.id}`, date: task.date, title: task.title, description: task.linkedAmount ? euro(task.linkedAmount) : task.completed ? "Tehtud" : "Todo", type: "Todo" })),
-    ...transactions.map((t) => ({ id: `transaction-${t.id}`, date: t.date, title: t.name, description: `${t.type === "income" ? "+" : "−"}${euro(t.amount)}`, type: t.type === "income" ? "Tulu" : "Kulu" })),
-  ].sort((a, b) => a.date.localeCompare(b.date));
-
-  if (entries.length === 0) return <EmptyState text="Kalendris pole veel ühtegi kirjet." />;
-
-  return <div className="timeline">{entries.map((entry) => (
-    <article className="timeline-row" key={entry.id}>
-      <div className="timeline-date">{entry.date}</div><div className="timeline-marker" />
-      <div className="timeline-content"><span className="timeline-type">{entry.type}</span><strong>{entry.title}</strong><small>{entry.description}</small></div>
-    </article>
-  ))}</div>;
+function NavButton({label,active,onClick}:{label:string;active:boolean;onClick:()=>void}){return <button className={`nav-button ${active?"active":""}`} onClick={onClick}>{label}</button>}
+function SubNavButton({label,active,onClick}:{label:string;active:boolean;onClick:()=>void}){return <button className={active?"active":""} onClick={onClick}>{label}</button>}
+function SectionTitle({eyebrow,title}:{eyebrow:string;title:string}){return <div className="section-heading"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div></div>}
+function SummaryCard({label,value,detail}:{label:string;value:string;detail:string}){return <article className="summary-card"><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>}
+function SummaryGrid(props:{currentBalance:number;safeToSpend:number;dailyBudget:number;remainingDays:number;totalDebt:number;debtCount:number}){return <section className="summary-grid"><SummaryCard label="Current balance" value={euro(props.currentBalance)} detail="Starting balance + income − expenses"/><SummaryCard label="Safe to spend" value={euro(Math.max(0,props.safeToSpend))} detail="After reserve and payments"/><SummaryCard label="Daily budget" value={euro(props.dailyBudget)} detail={`${props.remainingDays} days left`}/><SummaryCard label="Total debt" value={euro(props.totalDebt)} detail={`${props.debtCount} active`}/></section>}
+function ProgressBar({value}:{value:number}){const p=Math.max(0,Math.min(100,value*100));return <div className="progress-track" aria-label={`${Math.round(p)}%`}><div className="progress-fill" style={{width:`${p}%`}}/></div>}
+function EmptyState({text}:{text:string}){return <div className="empty-state">{text}</div>}
+function CalendarTimeline({debts,debtPayments,tasks,transactions}:{debts:Debt[];debtPayments:DebtPayment[];tasks:Task[];transactions:Transaction[]}){
+ const start=todayIso(),end=addDays(start,7);
+ const entries=[...debts.map(d=>({id:`debt-${d.id}`,date:d.dueDate,title:`Debt due: ${d.name}`,description:euro(d.minimumPayment),type:"Cash Out"})),...debtPayments.map(p=>({id:`payment-${p.id}`,date:p.date,title:`Paid: ${p.debtName}`,description:euro(p.amount),type:"Payment"})),...tasks.map(t=>({id:`task-${t.id}`,date:t.date,title:t.title,description:t.linkedAmount?euro(t.linkedAmount):t.completed?"Done":"To-Do",type:"To-Do"})),...transactions.map(t=>({id:`transaction-${t.id}`,date:t.date,title:t.name,description:`${t.type==="income"?"+":"−"}${euro(t.amount)}`,type:t.type==="income"?"Income":"Expense"}))].filter(x=>x.date>=start&&x.date<=end).sort((a,b)=>a.date.localeCompare(b.date));
+ if(entries.length===0)return <EmptyState text="Nothing scheduled for the next 7 days."/>;
+ return <div className="timeline">{entries.map(e=><article className="timeline-row" key={e.id}><div className="timeline-date">{e.date}</div><div className="timeline-marker"/><div className="timeline-content"><span className="timeline-type">{e.type}</span><strong>{e.title}</strong><small>{e.description}</small></div></article>)}</div>
 }
