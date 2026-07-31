@@ -24,7 +24,7 @@ export default function QuickAdd() {
   const [text, setText] = useState("");
 
   const close = () => { setOpen(false); setMode(null); setAmount(""); setName(""); setText(""); setDate(today()); };
-  const changed = () => { window.dispatchEvent(new CustomEvent("mymoney-data-changed")); close(); window.location.reload(); };
+  const changed = () => { window.dispatchEvent(new CustomEvent("mymoney-data-changed")); close(); };
 
   function save(event: FormEvent) {
     event.preventDefault();
