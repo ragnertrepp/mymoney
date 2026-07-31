@@ -34,19 +34,20 @@ export default function UserGuide({ mode = "tool" }: UserGuideProps) {
             </header>
 
             <div className="user-guide-steps">
-              <article><span>1</span><div><strong>Seadista kuu algjääk ja reserv</strong><p>Ava Eelarve → Seaded. Algjääk on raha, mis sul kuu alguses päriselt kasutada oli. Turvareserv on summa, mida sa ei taha tavakuludeks puutuda.</p></div></article>
-              <article><span>2</span><div><strong>Lisa kõik tulud ja kulud</strong><p>Ava Eelarve → Lisa tulu/kulu. Pane kirjele õige kuupäev ja kategooria, sest ülevaated ja prognoosid arvutatakse nende järgi.</p></div></article>
-              <article><span>3</span><div><strong>Lisa enda võlad</strong><p>Ava Võlad ja sisesta võlausaldaja, jääk, minimaalne kuumakse, intress, järgmine tähtaeg ja prioriteet. Kui maksad, kasuta nuppu „Märgi makse“.</p></div></article>
-              <article><span>4</span><div><strong>Lisa raha, mis teised sulle võlgnevad</strong><p>Võlgade vaates on eraldi „Mulle võlgu“ osa. Sisesta inimene või ettevõte, summa ja kokkulepitud maksekuupäev.</p></div></article>
-              <article><span>5</span><div><strong>Lisa tulevased arved</strong><p>Halda → Planeeritud maksed. Nii arvestab MyMoney teadaolevate tulevaste kohustustega enne, kui näitab palju raha on turvaliselt kasutada.</p></div></article>
-              <article><span>6</span><div><strong>Määra kategooriate piirid</strong><p>Halda → Kategooriate eelarvepiirid. Näiteks Toit 400 €, Transport 200 €. Täna vaade hoiatab 80% juures ja näitab ületusi.</p></div></article>
-              <article><span>7</span><div><strong>Vaata iga päev „Täna“ vaadet</strong><p>Seal näed kuu tulemust, lähenevaid makseid, eelarvehoiatusi ja olulisi tähtaegu. „Turvaliselt kasutada“ on parem orientiir kui ainult kontojääk.</p></div></article>
-              <article><span>8</span><div><strong>Tee varukoopia</strong><p>Kasuta üleval „Täielik varukoopia“ või Halda → Varukoopia. See salvestab MyMoney andmed JSON-failina.</p></div></article>
+              <article><span>1</span><div><strong>Info – igapäevane vaade</strong><p>Info on peamine koht, kus vaatad tänast seisu. Overview näitab saldot, tänaseid tulusid ja kulusid ning turvaliselt kasutatavat summat. Tänase kulu või tulu saad lisada kiire sisestusega.</p></div></article>
+              <article><span>2</span><div><strong>Budget – kuu eelarve</strong><p>Info → Budget all näed kuu tulusid, kulusid, võlamakseid ja turvaliselt kasutatavat summat. Algjääk ja turvareserv on eelarve põhiseaded.</p></div></article>
+              <article><span>3</span><div><strong>Can I buy it?</strong><p>Info → Can I buy it? all sisesta ainult ostu hind. MyMoney arvutab olemasoleva eelarve järgi, kas ost mahub turvalisse eelarvesse ja palju pärast ostu alles jääb.</p></div></article>
+              <article><span>4</span><div><strong>Loans – Cash Out</strong><p>Loans → Cash Out tähendab raha, mida sina oled teistele võlgu. Lisa võlausaldaja, jääk, kuumakse ja tähtaeg. Võlamaksed vähendavad võlajääki ja lähevad eelarves kuluna arvesse.</p></div></article>
+              <article><span>5</span><div><strong>Loans – Cash In</strong><p>Loans → Cash In tähendab raha, mida teised sulle võlgnevad. Lisa inimene või ettevõte, summa ja kokkulepitud maksekuupäev.</p></div></article>
+              <article><span>6</span><div><strong>Calendar ja To-Do</strong><p>Calendar koondab tähtajad ühte kohta. Calendar → To-Do all saad lisada ülesandeid ja märkida need tehtuks.</p></div></article>
+              <article><span>7</span><div><strong>Notes</strong><p>Notes on vabade märkmete jaoks: kokkulepped, raha puudutavad märkused, meeldetuletused või muu info, mida tahad MyMoney sees hoida.</p></div></article>
+              <article><span>8</span><div><strong>Halda</strong><p>Halda jääb süsteemi ja seadete kohaks. Seal on kasutusjuhend, eelarve seaded, prognoos, kategooriate piirid, planeeritud ja korduvad maksed, analüüs, otsing, kirjete muutmine, andmekontroll ning varukoopia.</p></div></article>
+              <article><span>9</span><div><strong>Varukoopia</strong><p>Tee regulaarselt varukoopia. Halda → Süsteem → Varukoopia kaudu saad andmed salvestada või taastada.</p></div></article>
             </div>
 
             <div className="guide-note">
-              <strong>Hea rusikareegel</strong>
-              <p>Sisesta andmed võimalikult kohe pärast tehingut. Mida täpsemad on kuupäevad, kategooriad ja tulevased maksed, seda täpsemad on prognoosid.</p>
+              <strong>Lihtsaim kasutusviis</strong>
+              <p>Lisa kulu või tulu kohe pärast tehingut. Igapäevaselt piisab enamasti Info → Overview vaatest; muud menüüd ava ainult siis, kui vajad detailsemat eelarvet, võlgu, kalendrit, märkmeid või seadeid.</p>
             </div>
 
             <button className="primary-button guide-finish" onClick={closeGuide}>{mode === "first-run" ? "Sain aru, alusta MyMoneyga" : "Sulge juhend"}</button>
