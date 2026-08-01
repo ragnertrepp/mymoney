@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { createPin, hasPin, isValidPinFormat, verifyPin } from "./Security";
-import { initializeSecureStorage } from "./SecureStorage";
+import { restoreEncryptedVaultToLocalStorage } from "./SecureStorage";
 import "./SecurityGate.css";
 
 type Props = { children: ReactNode };
@@ -21,7 +21,7 @@ export default function SecurityGate({ children }: Props) {
   }, []);
 
   async function unlockStorage(value: string) {
-    await initializeSecureStorage(value);
+    await restoreEncryptedVaultToLocalStorage(value);
     setUnlocked(true);
     setPin("");
   }
@@ -47,7 +47,7 @@ export default function SecurityGate({ children }: Props) {
         setConfigured(true);
         setConfirmPin("");
       } catch (reason) {
-        setError(reason instanceof Error ? reason.message : "Could not secure MyMoney data.");
+        setError(reason instanceof Error ? reason.message : "Could not open MyMoney.");
       } finally {
         setBusy(false);
       }
@@ -64,7 +64,7 @@ export default function SecurityGate({ children }: Props) {
       }
       await unlockStorage(pin);
     } catch {
-      setError("Encrypted data could not be opened. Check your PIN and stored data.");
+      setError("Stored data could not be recovered. Check your PIN and try again.");
     } finally {
       setBusy(false);
     }
@@ -78,26 +78,14 @@ export default function SecurityGate({ children }: Props) {
       <section className="security-card" aria-labelledby="security-title">
         <p className="eyebrow">MyMoney security</p>
         <h1 id="security-title">{configured ? "Enter PIN" : "Create MyMoney PIN"}</h1>
-        <p>
-          {configured
-            ? "MyMoney is locked. Enter your PIN to decrypt your data."
-            : "Your PIN protects MyMoney and encrypts local data and backups."}
-        </p>
+        <p>{configured ? "MyMoney is locked. Enter your PIN." : "Your PIN protects MyMoney and encrypts backups."}</p>
         <form onSubmit={submit} className="security-form">
-          <label>
-            PIN
-            <input autoFocus inputMode="numeric" autoComplete={configured ? "current-password" : "new-password"} pattern="[0-9]*" type="password" value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="6–12 digits" />
-          </label>
-          {!configured && (
-            <label>
-              Repeat PIN
-              <input inputMode="numeric" autoComplete="new-password" pattern="[0-9]*" type="password" value={confirmPin} onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="Repeat PIN" />
-            </label>
-          )}
+          <label>PIN<input autoFocus inputMode="numeric" autoComplete={configured ? "current-password" : "new-password"} pattern="[0-9]*" type="password" value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="6–12 digits" /></label>
+          {!configured && <label>Repeat PIN<input inputMode="numeric" autoComplete="new-password" pattern="[0-9]*" type="password" value={confirmPin} onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="Repeat PIN" /></label>}
           {error && <div className="security-error" role="alert">{error}</div>}
           <button className="primary-button" type="submit" disabled={busy}>{busy ? "Opening…" : configured ? "Open MyMoney" : "Save PIN and open"}</button>
         </form>
-        <small>The PIN itself is not stored in readable form. If you forget it, encrypted data cannot be recovered.</small>
+        <small>The PIN itself is not stored in readable form.</small>
       </section>
     </main>
   );
