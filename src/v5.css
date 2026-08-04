@@ -61,9 +61,10 @@
 .note-card { padding:14px; border:1px solid #283746; border-radius:14px; background:#101820; }
 .note-card h3 { margin:6px 0; }
 .note-card p { white-space:pre-wrap; overflow-wrap:anywhere; }
+.budget-control-card { display:none !important; }
 body.notes-mode main > *:not(.notes-page-mount) { display:none !important; }
 body.sales-mode main > *:not(.sales-page-mount):not(.simple-navigation-mount) { display:none !important; }
-body.canbuy-mode main > *:not(.can-buy-page-mount):not(.simple-navigation-mount) { display:none !important; }
+body.canbuy-mode main > *:not(.simple-navigation-mount) { display:none !important; }
 .debt-card { display:grid; gap:14px; }
 .debt-header { align-items:flex-start; }
 .debt-details { display:grid !important; grid-template-columns:1fr 1fr !important; gap:8px 16px !important; margin:0 !important; }
