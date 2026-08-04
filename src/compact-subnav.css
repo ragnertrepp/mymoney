@@ -1,0 +1,24 @@
+.simple-subnav {
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.simple-subnav button {
+  padding: 6px 4px;
+  font-size: 11px;
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  .simple-subnav {
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .simple-subnav button {
+    padding: 5px 3px;
+    font-size: 10px;
+    border-radius: 7px;
+  }
+}
