@@ -17,6 +17,7 @@ import TodayOverview from "./TodayOverview";
 import TopBackupAdjuster from "./TopBackupAdjuster";
 import UndoManagerGuard from "./UndoManager";
 import V5Tools from "./V5Tools";
+import "./ui-fixes.css";
 
 const UserGuide = lazy(() => import("./UserGuide"));
 const GUIDE_SEEN_KEY = "rebuildme-mymoney-guide-seen-v1";
