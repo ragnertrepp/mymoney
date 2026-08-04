@@ -65,6 +65,7 @@
 .note-card h3 { margin:6px 0; }
 .note-card p { white-space:pre-wrap; overflow-wrap:anywhere; }
 body.notes-mode main > *:not(.notes-page-mount) { display:none !important; }
+body.sales-mode main > *:not(.sales-page-mount):not(.simple-navigation-mount) { display:none !important; }
 
 .debt-card { display:grid; gap:14px; }
 .debt-header { align-items:flex-start; }
