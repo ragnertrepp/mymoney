@@ -15,6 +15,7 @@ function openOriginal(label: string) { originalButton(label)?.click(); }
 export default function MainNavigation() {
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
   const [main, setMain] = useState<Main>("overview");
+  const [openMenu, setOpenMenu] = useState<Exclude<Main, "sales"> | null>(null);
   const [overview, setOverview] = useState<Overview>("summary");
   const [loans, setLoans] = useState<Loans>("overview");
   const [calendar, setCalendar] = useState<Calendar>("calendar");
@@ -42,11 +43,14 @@ export default function MainNavigation() {
 
   function chooseMain(next: Main) {
     setMain(next);
-    if (next === "sales") { modes("sales"); return; }
+    if (next === "sales") {
+      setOpenMenu(null);
+      modes("sales");
+      return;
+    }
+
     modes();
-    if (next === "overview") openOriginal(overview === "budget" ? "Eelarve" : "Täna");
-    if (next === "loans") openOriginal("Võlad");
-    if (next === "calendar") openOriginal(calendar === "todo" ? "Todo" : "Kalender");
+    setOpenMenu(next);
   }
 
   function chooseOverview(next: Overview) {
@@ -68,22 +72,22 @@ export default function MainNavigation() {
   if (!mountNode) return null;
   return createPortal(<div className="simple-navigation-wrap">
     <nav className="simple-navigation" aria-label="Main navigation">
-      <button className={main === "overview" ? "active" : ""} onClick={() => chooseMain("overview")}>Overview</button>
+      <button className={main === "overview" ? "active" : ""} onClick={() => chooseMain("overview")} aria-expanded={openMenu === "overview"}>Overview</button>
       <button className={main === "sales" ? "active" : ""} onClick={() => chooseMain("sales")}>Sales</button>
-      <button className={main === "loans" ? "active" : ""} onClick={() => chooseMain("loans")}>Loans</button>
-      <button className={main === "calendar" ? "active" : ""} onClick={() => chooseMain("calendar")}>Calendar</button>
+      <button className={main === "loans" ? "active" : ""} onClick={() => chooseMain("loans")} aria-expanded={openMenu === "loans"}>Loans</button>
+      <button className={main === "calendar" ? "active" : ""} onClick={() => chooseMain("calendar")} aria-expanded={openMenu === "calendar"}>Calendar</button>
     </nav>
-    {main === "overview" && <nav className="simple-subnav" aria-label="Overview views">
+    {openMenu === "overview" && <nav className="simple-subnav" aria-label="Overview views">
       <button className={overview === "summary" ? "active" : ""} onClick={() => chooseOverview("summary")}>Summary</button>
       <button className={overview === "budget" ? "active" : ""} onClick={() => chooseOverview("budget")}>Budget</button>
       <button className={overview === "canbuy" ? "active" : ""} onClick={() => chooseOverview("canbuy")}>Can I buy it?</button>
     </nav>}
-    {main === "loans" && <nav className="simple-subnav" aria-label="Loan views">
+    {openMenu === "loans" && <nav className="simple-subnav" aria-label="Loan views">
       <button className={loans === "overview" ? "active" : ""} onClick={() => chooseLoans("overview")}>Loans Overview</button>
       <button className={loans === "cashout" ? "active" : ""} onClick={() => chooseLoans("cashout")}>Cash Out</button>
       <button className={loans === "cashin" ? "active" : ""} onClick={() => chooseLoans("cashin")}>Cash In</button>
     </nav>}
-    {main === "calendar" && <nav className="simple-subnav" aria-label="Calendar views">
+    {openMenu === "calendar" && <nav className="simple-subnav" aria-label="Calendar views">
       <button className={calendar === "calendar" ? "active" : ""} onClick={() => chooseCalendar("calendar")}>Calendar</button>
       <button className={calendar === "todo" ? "active" : ""} onClick={() => chooseCalendar("todo")}>To-Do</button>
       <button className={calendar === "notes" ? "active" : ""} onClick={() => chooseCalendar("notes")}>Notes</button>
