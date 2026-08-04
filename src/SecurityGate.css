@@ -26,7 +26,10 @@
 .security-error { padding:10px 12px; border-radius:10px; background:rgba(220,38,38,.16); color:#fecaca; font-weight:700; }
 .security-card small { display:block; margin-top:18px; color:#94a2b1; line-height:1.45; }
 @media (max-width:600px) {
-  .security-gate { place-items:start center; padding: max(18px,env(safe-area-inset-top)) 14px 18px; }
-  .security-card { margin-top:12px; padding:22px 18px; border-radius:20px; }
+  .security-gate {
+    place-items: center;
+    padding: max(18px,env(safe-area-inset-top)) 14px max(18px,env(safe-area-inset-bottom));
+  }
+  .security-card { margin-top:0; padding:22px 18px; border-radius:20px; }
   .security-card h1 { font-size:42px; }
 }
