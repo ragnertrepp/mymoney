@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 type Main = "overview" | "sales" | "loans" | "calendar";
-type Overview = "summary" | "budget" | "canbuy";
+type Overview = "summary" | "budget";
 type Loans = "overview" | "cashout" | "cashin";
 type Calendar = "calendar" | "todo" | "notes";
 
@@ -31,14 +31,14 @@ export default function MainNavigation() {
     return () => { nav.classList.remove("legacy-navigation"); mount.remove(); };
   }, []);
 
-  function modes(next?: "notes" | "sales" | "canbuy") {
-    const notes = next === "notes", sales = next === "sales", canbuy = next === "canbuy";
+  function modes(next?: "notes" | "sales") {
+    const notes = next === "notes", sales = next === "sales";
     document.body.classList.toggle("notes-mode", notes);
     document.body.classList.toggle("sales-mode", sales);
-    document.body.classList.toggle("canbuy-mode", canbuy);
+    document.body.classList.remove("canbuy-mode");
     window.dispatchEvent(new CustomEvent("mymoney-notes-mode", { detail: notes }));
     window.dispatchEvent(new CustomEvent("mymoney-sales-mode", { detail: sales }));
-    window.dispatchEvent(new CustomEvent("mymoney-canbuy-mode", { detail: canbuy }));
+    window.dispatchEvent(new CustomEvent("mymoney-canbuy-mode", { detail: false }));
   }
 
   function chooseMain(next: Main) {
@@ -54,7 +54,9 @@ export default function MainNavigation() {
   }
 
   function chooseOverview(next: Overview) {
-    setOverview(next); setMain("overview"); modes(next === "canbuy" ? "canbuy" : undefined);
+    setOverview(next);
+    setMain("overview");
+    modes();
     openOriginal(next === "budget" ? "Eelarve" : "Täna");
   }
 
@@ -80,7 +82,6 @@ export default function MainNavigation() {
     {openMenu === "overview" && <nav className="simple-subnav" aria-label="Overview views">
       <button className={overview === "summary" ? "active" : ""} onClick={() => chooseOverview("summary")}>Summary</button>
       <button className={overview === "budget" ? "active" : ""} onClick={() => chooseOverview("budget")}>Budget</button>
-      <button className={overview === "canbuy" ? "active" : ""} onClick={() => chooseOverview("canbuy")}>Can I buy it?</button>
     </nav>}
     {openMenu === "loans" && <nav className="simple-subnav" aria-label="Loan views">
       <button className={loans === "overview" ? "active" : ""} onClick={() => chooseLoans("overview")}>Loans Overview</button>
