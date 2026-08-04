@@ -43,6 +43,18 @@ body { padding-bottom: 92px; }
 .task-card { overflow-wrap: anywhere; }
 footer .danger-link,
 .app-footer .danger-link { margin-right: 10px; }
+.sale-card { display:grid; gap:14px; padding:16px 0; border-bottom:1px solid #263341; }
+.sale-card:last-child { border-bottom:0; }
+.sale-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.sale-head > div { display:grid; gap:4px; min-width:0; }
+.sale-head strong { overflow-wrap:anywhere; }
+.sale-head small,.sale-payments small { color:#94a2b1; }
+.sale-head > span { flex:0 0 auto; padding:6px 9px; border:1px solid #3d5264; border-radius:999px; background:#17212b; font-size:12px; font-weight:800; }
+.sale-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.sale-values span { display:grid; gap:4px; padding:11px; border:1px solid #2b3948; border-radius:12px; color:#94a2b1; background:#0e171f; }
+.sale-values strong { color:#f5f7fa; overflow-wrap:anywhere; }
+.sale-payments { display:grid; gap:4px; }
+.sale-payment-form { margin:0; padding-top:4px; }
 @media (max-width: 600px) {
   body { padding-bottom: 84px; }
   .v5-manage-button { right: 12px !important; width: 54px !important; height: 54px !important; font-size: 27px !important; }
@@ -54,4 +66,5 @@ footer .danger-link,
   .overview-payment { align-items: start; }
   .simple-navigation,.simple-subnav { border-radius: 14px; }
   .simple-navigation button,.simple-subnav button { min-height: 48px; }
+  .sale-values { grid-template-columns:1fr; }
 }
