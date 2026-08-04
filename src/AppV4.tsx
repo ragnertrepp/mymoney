@@ -12,6 +12,7 @@ import PrivacyShield from "./PrivacyShield";
 import QuickAdd from "./QuickAdd";
 import ReminderNotifications from "./ReminderNotifications";
 import SafeBudgetAdjuster from "./SafeBudgetAdjuster";
+import SalesPage from "./SalesPage";
 import SecurityGate from "./SecurityGate";
 import TodayOverview from "./TodayOverview";
 import TopBackupAdjuster from "./TopBackupAdjuster";
@@ -46,6 +47,7 @@ export default function AppV4() {
       <TodayOverview />
       <TopBackupAdjuster />
       <NotesPage />
+      <SalesPage />
       <CanBuyPage />
       <ReminderNotifications />
       <QuickAdd />
