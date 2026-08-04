@@ -1,15 +1,21 @@
 .security-gate {
+  position: fixed;
+  inset: 0;
+  width: 100%;
   min-height: 100dvh;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 18px;
   box-sizing: border-box;
+  overflow-y: auto;
   background: #091019;
   color: #f5f7fa;
 }
 .security-card {
   width: min(100%, 420px);
   box-sizing: border-box;
+  margin: auto;
   background: #111922;
   color: #f5f7fa;
   border: 1px solid #2c3b4a;
@@ -27,9 +33,10 @@
 .security-card small { display:block; margin-top:18px; color:#94a2b1; line-height:1.45; }
 @media (max-width:600px) {
   .security-gate {
-    place-items: center;
+    align-items: center;
+    justify-content: center;
     padding: max(18px,env(safe-area-inset-top)) 14px max(18px,env(safe-area-inset-bottom));
   }
-  .security-card { margin-top:0; padding:22px 18px; border-radius:20px; }
+  .security-card { margin: auto; padding:22px 18px; border-radius:20px; }
   .security-card h1 { font-size:42px; }
 }
