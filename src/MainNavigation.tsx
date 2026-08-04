@@ -11,6 +11,10 @@ function originalButton(label: string) {
     .find((button) => button.textContent?.trim() === label);
 }
 function openOriginal(label: string) { originalButton(label)?.click(); }
+function setNextTodoPreviewVisible(visible: boolean) {
+  const preview = document.querySelector<HTMLElement>(".two-column > .card:nth-child(2)");
+  if (preview) preview.style.display = visible ? "" : "none";
+}
 
 export default function MainNavigation() {
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
@@ -28,14 +32,16 @@ export default function MainNavigation() {
     mount.className = "simple-navigation-mount";
     nav.parentElement.insertBefore(mount, nav);
     setMountNode(mount);
+    setNextTodoPreviewVisible(true);
     return () => { nav.classList.remove("legacy-navigation"); mount.remove(); };
   }, []);
 
-  function modes(next?: "notes" | "sales" | "canbuy") {
+  function modes(next?: "notes" | "sales" | "canbuy", showNextTodo = false) {
     const notes = next === "notes", sales = next === "sales", canbuy = next === "canbuy";
     document.body.classList.toggle("notes-mode", notes);
     document.body.classList.toggle("sales-mode", sales);
     document.body.classList.toggle("canbuy-mode", canbuy);
+    setNextTodoPreviewVisible(showNextTodo);
     window.dispatchEvent(new CustomEvent("mymoney-notes-mode", { detail: notes }));
     window.dispatchEvent(new CustomEvent("mymoney-sales-mode", { detail: sales }));
     window.dispatchEvent(new CustomEvent("mymoney-canbuy-mode", { detail: canbuy }));
@@ -55,7 +61,7 @@ export default function MainNavigation() {
   function chooseOverview(next: Overview) {
     setOverview(next);
     setMain("overview");
-    modes(next === "canbuy" ? "canbuy" : undefined);
+    modes(next === "canbuy" ? "canbuy" : undefined, next === "summary");
     openOriginal(next === "budget" ? "Eelarve" : "Täna");
   }
 
