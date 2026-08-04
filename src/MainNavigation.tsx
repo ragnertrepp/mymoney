@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-type Main = "info" | "loans" | "calendar" | "notes";
-type Info = "overview" | "budget" | "canbuy";
-type Calendar = "calendar" | "todo";
+type Main = "overview" | "sales" | "loans" | "calendar";
+type Overview = "summary" | "budget" | "canbuy";
+type Loans = "overview" | "cashout" | "cashin";
+type Calendar = "calendar" | "todo" | "notes";
 
 function originalButton(label: string) {
   return Array.from(document.querySelectorAll<HTMLButtonElement>(".navigation .nav-button"))
@@ -13,8 +14,9 @@ function openOriginal(label: string) { originalButton(label)?.click(); }
 
 export default function MainNavigation() {
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
-  const [main, setMain] = useState<Main>("info");
-  const [info, setInfo] = useState<Info>("overview");
+  const [main, setMain] = useState<Main>("overview");
+  const [overview, setOverview] = useState<Overview>("summary");
+  const [loans, setLoans] = useState<Loans>("overview");
   const [calendar, setCalendar] = useState<Calendar>("calendar");
 
   useEffect(() => {
@@ -28,48 +30,63 @@ export default function MainNavigation() {
     return () => { nav.classList.remove("legacy-navigation"); mount.remove(); };
   }, []);
 
-  function clearSpecialModes() {
-    document.body.classList.remove("notes-mode", "canbuy-mode");
-    window.dispatchEvent(new CustomEvent("mymoney-notes-mode", { detail: false }));
-    window.dispatchEvent(new CustomEvent("mymoney-canbuy-mode", { detail: false }));
+  function modes(next?: "notes" | "sales" | "canbuy") {
+    const notes = next === "notes", sales = next === "sales", canbuy = next === "canbuy";
+    document.body.classList.toggle("notes-mode", notes);
+    document.body.classList.toggle("sales-mode", sales);
+    document.body.classList.toggle("canbuy-mode", canbuy);
+    window.dispatchEvent(new CustomEvent("mymoney-notes-mode", { detail: notes }));
+    window.dispatchEvent(new CustomEvent("mymoney-sales-mode", { detail: sales }));
+    window.dispatchEvent(new CustomEvent("mymoney-canbuy-mode", { detail: canbuy }));
   }
+
   function chooseMain(next: Main) {
     setMain(next);
-    clearSpecialModes();
-    if (next === "notes") {
-      document.body.classList.add("notes-mode");
-      window.dispatchEvent(new CustomEvent("mymoney-notes-mode", { detail: true }));
-    } else if (next === "info") openOriginal(info === "budget" ? "Eelarve" : "Täna");
-    else if (next === "loans") openOriginal("Võlad");
-    else if (next === "calendar") openOriginal(calendar === "todo" ? "Todo" : "Kalender");
+    if (next === "sales") { modes("sales"); return; }
+    modes();
+    if (next === "overview") openOriginal(overview === "budget" ? "Eelarve" : "Täna");
+    if (next === "loans") openOriginal("Võlad");
+    if (next === "calendar") openOriginal(calendar === "todo" ? "Todo" : "Kalender");
   }
-  function chooseInfo(next: Info) {
-    setInfo(next); setMain("info"); clearSpecialModes();
-    if (next === "canbuy") document.body.classList.add("canbuy-mode");
-    window.dispatchEvent(new CustomEvent("mymoney-canbuy-mode", { detail: next === "canbuy" }));
+
+  function chooseOverview(next: Overview) {
+    setOverview(next); setMain("overview"); modes(next === "canbuy" ? "canbuy" : undefined);
     openOriginal(next === "budget" ? "Eelarve" : "Täna");
   }
+
+  function chooseLoans(next: Loans) {
+    setLoans(next); setMain("loans"); modes(); openOriginal("Võlad");
+    window.dispatchEvent(new CustomEvent("mymoney-loans-view", { detail: next }));
+  }
+
   function chooseCalendar(next: Calendar) {
-    setCalendar(next); setMain("calendar"); clearSpecialModes();
-    openOriginal(next === "todo" ? "Todo" : "Kalender");
+    setCalendar(next); setMain("calendar");
+    if (next === "notes") { modes("notes"); return; }
+    modes(); openOriginal(next === "todo" ? "Todo" : "Kalender");
   }
 
   if (!mountNode) return null;
   return createPortal(<div className="simple-navigation-wrap">
     <nav className="simple-navigation" aria-label="Main navigation">
-      <button className={main === "info" ? "active" : ""} onClick={() => chooseMain("info")}>Info</button>
+      <button className={main === "overview" ? "active" : ""} onClick={() => chooseMain("overview")}>Overview</button>
+      <button className={main === "sales" ? "active" : ""} onClick={() => chooseMain("sales")}>Sales</button>
       <button className={main === "loans" ? "active" : ""} onClick={() => chooseMain("loans")}>Loans</button>
       <button className={main === "calendar" ? "active" : ""} onClick={() => chooseMain("calendar")}>Calendar</button>
-      <button className={main === "notes" ? "active" : ""} onClick={() => chooseMain("notes")}>Notes</button>
     </nav>
-    {main === "info" && <nav className="simple-subnav" aria-label="Info views">
-      <button className={info === "overview" ? "active" : ""} onClick={() => chooseInfo("overview")}>Overview</button>
-      <button className={info === "budget" ? "active" : ""} onClick={() => chooseInfo("budget")}>Budget</button>
-      <button className={info === "canbuy" ? "active" : ""} onClick={() => chooseInfo("canbuy")}>Can I buy it?</button>
+    {main === "overview" && <nav className="simple-subnav" aria-label="Overview views">
+      <button className={overview === "summary" ? "active" : ""} onClick={() => chooseOverview("summary")}>Summary</button>
+      <button className={overview === "budget" ? "active" : ""} onClick={() => chooseOverview("budget")}>Budget</button>
+      <button className={overview === "canbuy" ? "active" : ""} onClick={() => chooseOverview("canbuy")}>Can I buy it?</button>
+    </nav>}
+    {main === "loans" && <nav className="simple-subnav" aria-label="Loan views">
+      <button className={loans === "overview" ? "active" : ""} onClick={() => chooseLoans("overview")}>Loans Overview</button>
+      <button className={loans === "cashout" ? "active" : ""} onClick={() => chooseLoans("cashout")}>Cash Out</button>
+      <button className={loans === "cashin" ? "active" : ""} onClick={() => chooseLoans("cashin")}>Cash In</button>
     </nav>}
     {main === "calendar" && <nav className="simple-subnav" aria-label="Calendar views">
       <button className={calendar === "calendar" ? "active" : ""} onClick={() => chooseCalendar("calendar")}>Calendar</button>
       <button className={calendar === "todo" ? "active" : ""} onClick={() => chooseCalendar("todo")}>To-Do</button>
+      <button className={calendar === "notes" ? "active" : ""} onClick={() => chooseCalendar("notes")}>Notes</button>
     </nav>}
   </div>, mountNode);
 }
