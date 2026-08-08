@@ -12,6 +12,13 @@ function safeDate(value: unknown) {
   return new Date().toISOString().slice(0, 10);
 }
 
+function resetUiModes() {
+  document.body.classList.remove("notes-mode", "sales-mode", "canbuy-mode");
+  window.dispatchEvent(new CustomEvent("mymoney-notes-mode", { detail: false }));
+  window.dispatchEvent(new CustomEvent("mymoney-sales-mode", { detail: false }));
+  window.dispatchEvent(new CustomEvent("mymoney-canbuy-mode", { detail: false }));
+}
+
 function repairStoredAppData() {
   for (const key of APP_DATA_KEYS) {
     const raw = localStorage.getItem(key);
@@ -106,6 +113,7 @@ export default function SecurityGate({ children }: Props) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    resetUiModes();
     setConfigured(hasPin());
     setUnlocked(false);
     setReady(true);
@@ -114,6 +122,7 @@ export default function SecurityGate({ children }: Props) {
   async function unlockStorage(value: string) {
     await restoreEncryptedVaultToLocalStorage(value);
     repairStoredAppData();
+    resetUiModes();
     setUnlocked(true);
     setPin("");
   }
