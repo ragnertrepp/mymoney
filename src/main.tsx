@@ -17,9 +17,12 @@ import "./category-budgets.css";
 import "./budget-forecast.css";
 import "./user-guide-receivables.css";
 import App from "./AppV4";
+import AppErrorBoundary from "./AppErrorBoundary";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </StrictMode>,
 );
