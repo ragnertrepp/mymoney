@@ -1,24 +1,37 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function PrivacyShield() {
-  const [hidden, setHidden] = useState(() => document.visibilityState === "hidden");
+  const [hidden, setHidden] = useState(false);
+  const mountedVisible = useRef(false);
 
   useEffect(() => {
-    const updateVisibility = () => {
-      setHidden(document.visibilityState === "hidden");
+    const restoreVisibleState = () => {
+      if (document.visibilityState === "visible") {
+        mountedVisible.current = true;
+        setHidden(false);
+      }
     };
 
-    const restoreVisibleState = () => {
-      if (document.visibilityState === "visible") setHidden(false);
+    const updateVisibility = () => {
+      if (document.visibilityState === "visible") {
+        restoreVisibleState();
+        return;
+      }
+
+      // Never cover the app during the initial PIN -> app transition.
+      // Only show the shield after the page has definitely been visible once.
+      if (mountedVisible.current) setHidden(true);
     };
+
+    restoreVisibleState();
+    const clearInitialShield = window.setTimeout(restoreVisibleState, 250);
 
     document.addEventListener("visibilitychange", updateVisibility);
     window.addEventListener("focus", restoreVisibleState);
     window.addEventListener("pageshow", restoreVisibleState);
 
-    restoreVisibleState();
-
     return () => {
+      window.clearTimeout(clearInitialShield);
       document.removeEventListener("visibilitychange", updateVisibility);
       window.removeEventListener("focus", restoreVisibleState);
       window.removeEventListener("pageshow", restoreVisibleState);
