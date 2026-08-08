@@ -5,6 +5,97 @@ import "./SecurityGate.css";
 
 type Props = { children: ReactNode };
 
+const APP_DATA_KEYS = ["rebuildme-mymoney-v2", "rebuildme-mymoney-v1"];
+
+function safeDate(value: unknown) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return new Date().toISOString().slice(0, 10);
+}
+
+function repairStoredAppData() {
+  for (const key of APP_DATA_KEYS) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) continue;
+
+      const data = parsed as Record<string, unknown>;
+
+      if (Array.isArray(data.transactions)) {
+        data.transactions = data.transactions
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+          .map((item, index) => ({
+            ...item,
+            id: typeof item.id === "string" && item.id ? item.id : `repaired-transaction-${index}-${Date.now()}`,
+            name: typeof item.name === "string" ? item.name : "Entry",
+            amount: Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0,
+            type: item.type === "income" ? "income" : "expense",
+            date: safeDate(item.date),
+            category: typeof item.category === "string" ? item.category : "Other",
+          }));
+      }
+
+      if (Array.isArray(data.debts)) {
+        data.debts = data.debts
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+          .map((item, index) => ({
+            ...item,
+            id: typeof item.id === "string" && item.id ? item.id : `repaired-debt-${index}-${Date.now()}`,
+            name: typeof item.name === "string" ? item.name : "Debt",
+            balance: Number.isFinite(Number(item.balance)) ? Number(item.balance) : 0,
+            minimumPayment: Number.isFinite(Number(item.minimumPayment)) ? Number(item.minimumPayment) : 0,
+            interest: Number.isFinite(Number(item.interest)) ? Number(item.interest) : 0,
+            dueDate: safeDate(item.dueDate ?? item.date),
+            priority: Number.isFinite(Number(item.priority)) ? Math.max(1, Number(item.priority)) : 1,
+          }));
+      }
+
+      if (Array.isArray(data.debtPayments)) {
+        data.debtPayments = data.debtPayments
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+          .map((item, index) => ({
+            ...item,
+            id: typeof item.id === "string" && item.id ? item.id : `repaired-payment-${index}-${Date.now()}`,
+            debtId: typeof item.debtId === "string" ? item.debtId : "",
+            debtName: typeof item.debtName === "string" ? item.debtName : "Debt",
+            amount: Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0,
+            date: safeDate(item.date),
+          }));
+      }
+
+      if (Array.isArray(data.tasks)) {
+        data.tasks = data.tasks
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+          .map((item, index) => ({
+            ...item,
+            id: typeof item.id === "string" && item.id ? item.id : `repaired-task-${index}-${Date.now()}`,
+            title: typeof item.title === "string" ? item.title : typeof item.name === "string" ? item.name : "Task",
+            date: safeDate(item.date ?? item.dueDate),
+            completed: Boolean(item.completed),
+            linkedAmount: item.linkedAmount == null || !Number.isFinite(Number(item.linkedAmount)) ? undefined : Number(item.linkedAmount),
+          }));
+      }
+
+      if (!data.settings || typeof data.settings !== "object" || Array.isArray(data.settings)) {
+        data.settings = { startingBalance: 0, monthlyReserve: 100 };
+      } else {
+        const settings = data.settings as Record<string, unknown>;
+        data.settings = {
+          ...settings,
+          startingBalance: Number.isFinite(Number(settings.startingBalance)) ? Number(settings.startingBalance) : 0,
+          monthlyReserve: Number.isFinite(Number(settings.monthlyReserve)) ? Number(settings.monthlyReserve) : 100,
+        };
+      }
+
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch {
+      // Keep unreadable legacy data untouched; the app's own fallback will handle it.
+    }
+  }
+}
+
 export default function SecurityGate({ children }: Props) {
   const [ready, setReady] = useState(false);
   const [configured, setConfigured] = useState(false);
@@ -22,6 +113,7 @@ export default function SecurityGate({ children }: Props) {
 
   async function unlockStorage(value: string) {
     await restoreEncryptedVaultToLocalStorage(value);
+    repairStoredAppData();
     setUnlocked(true);
     setPin("");
   }
