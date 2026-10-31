@@ -15,7 +15,7 @@ permissions:
 jobs:
   android:
     name: Build RF Vaade FOSS debug APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 85
     steps:
       - name: Checkout branding and workflow
