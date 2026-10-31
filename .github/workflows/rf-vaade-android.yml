@@ -1,0 +1,79 @@
+name: RF Vaade Android APK
+
+on:
+  push:
+    branches:
+      - rf-vaade-build-2026
+    paths:
+      - 'rfvaade/**'
+      - '.github/workflows/rf-vaade-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Build RF Vaade FOSS debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+    steps:
+      - name: Checkout branding and workflow
+        uses: actions/checkout@v4
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install SDK platform 37
+        run: sdkmanager --install "platforms;android-37" "build-tools;36.0.0" "platform-tools"
+
+      - name: Download verified upstream GPL-3.0 source
+        run: |
+          git clone --no-checkout https://github.com/CIS-C0/RFSentinel.git upstream
+          git -C upstream checkout --detach 4cc1aec3cd821b3c6ca518bcb851e94e19662012
+          test "$(git -C upstream rev-parse HEAD)" = "4cc1aec3cd821b3c6ca518bcb851e94e19662012"
+
+      - name: Apply RF Vaade branding and languages
+        run: python3 rfvaade/scripts/prepare.py upstream
+
+      - name: Preserve full modified source code (GPL-3.0)
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          root=Path("upstream")
+          excluded={".git",".gradle","build",".idea"}
+          with ZipFile("RF-Vaade-source-GPL3.zip","w",ZIP_DEFLATED,compresslevel=6) as z:
+              for f in root.rglob("*"):
+                  if f.is_file() and not excluded.intersection(f.relative_to(root).parts):
+                      z.write(f,arcname=str(Path("RF-Vaade-source")/f.relative_to(root)))
+          PY
+
+      - name: Build Android APK
+        working-directory: upstream
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace -Prfs.foss=true assembleFossDebug
+
+      - name: Upload installable Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RF-Vaade-Android-APK
+          path: upstream/app/build/outputs/apk/foss/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload complete modified corresponding source
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RF-Vaade-GPL3-Source
+          path: RF-Vaade-source-GPL3.zip
+          if-no-files-found: warn
+          retention-days: 30
